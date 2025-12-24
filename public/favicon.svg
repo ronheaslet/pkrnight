@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="felt" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a472a"/>
+      <stop offset="100%" style="stop-color:#0d2818"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#d4af37"/>
+      <stop offset="100%" style="stop-color:#b8860b"/>
+    </linearGradient>
+  </defs>
+  <!-- Background circle -->
+  <circle cx="50" cy="50" r="48" fill="url(#felt)" stroke="url(#gold)" stroke-width="3"/>
+  <!-- Spade symbol -->
+  <path d="M50 20 C35 35 25 45 25 55 C25 65 35 70 45 65 C42 75 38 80 35 82 L65 82 C62 80 58 75 55 65 C65 70 75 65 75 55 C75 45 65 35 50 20Z" fill="url(#gold)"/>
+</svg>
