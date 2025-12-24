@@ -34,13 +34,18 @@ export default function LiveGameTab() {
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showRebuyModal, setShowRebuyModal] = useState(false)
   const [showEliminateModal, setShowEliminateModal] = useState(false)
+  const [showTVMode, setShowTVMode] = useState(false)
+  const [showSoundSettings, setShowSoundSettings] = useState(false)
   const [selectedPlayer, setSelectedPlayer] = useState(null)
+  const [rebuyRequests, setRebuyRequests] = useState([])
   
   // Timer state
   const [timeRemaining, setTimeRemaining] = useState(15 * 60)
   const [isRunning, setIsRunning] = useState(false)
   const [currentLevel, setCurrentLevel] = useState(1)
+  const [warningPlayed, setWarningPlayed] = useState(false)
   const timerRef = useRef(null)
+  const audioContextRef = useRef(null)
   
   // Game settings
   const [rebuysCutoffLevel, setRebuysCutoffLevel] = useState(6)
@@ -48,13 +53,24 @@ export default function LiveGameTab() {
   const [buyInAmount, setBuyInAmount] = useState(20)
   const [rebuyAmount, setRebuyAmount] = useState(20)
   const [bountyAmount, setBountyAmount] = useState(5)
+  const [startingChips, setStartingChips] = useState(10000)
   const [totalRebuys, setTotalRebuys] = useState(0)
+  
+  // Sound settings
+  const [soundSettings, setSoundSettings] = useState({
+    levelChange: true,
+    warningTime: 60,
+    warningEnabled: true,
+    rebuyAlert: true,
+    rebuyClosing: true,
+    volume: 80,
+    voiceStyle: 'southern'
+  })
 
   // Fetch today's/upcoming events
   useEffect(() => {
     if (currentLeague) {
       fetchEvents()
-      // Set defaults from league settings
       setBuyInAmount(currentLeague.default_buy_in || 20)
       setRebuyAmount(currentLeague.default_rebuy_cost || 20)
       setBountyAmount(currentLeague.bounty_amount || 5)
@@ -65,17 +81,7 @@ export default function LiveGameTab() {
     const today = new Date().toISOString().split('T')[0]
     const { data, error } = await supabase
       .from('events')
-      .select(`
-        *,
-        game_sessions (
-          id,
-          current_level,
-          time_remaining_seconds,
-          is_running,
-          started_at,
-          ended_at
-        )
-      `)
+      .select(`*, game_sessions (id, current_level, time_remaining_seconds, is_running, started_at, ended_at)`)
       .eq('league_id', currentLeague.id)
       .gte('event_date', today)
       .order('event_date', { ascending: true })
@@ -112,11 +118,7 @@ export default function LiveGameTab() {
       
       const { data: parts } = await supabase
         .from('game_participants')
-        .select(`
-          *,
-          users (id, full_name, display_name),
-          eliminated_by_user:users!game_participants_eliminated_by_fkey (full_name, display_name)
-        `)
+        .select(`*, users (id, full_name, display_name), eliminated_by_user:users!game_participants_eliminated_by_fkey (full_name, display_name)`)
         .eq('session_id', session.id)
         .order('finish_position', { ascending: true, nullsFirst: true })
 
@@ -139,14 +141,17 @@ export default function LiveGameTab() {
     if (isRunning && timeRemaining > 0) {
       timerRef.current = setInterval(() => {
         setTimeRemaining(t => {
+          // Warning sound
+          if (t === soundSettings.warningTime && soundSettings.warningEnabled && !warningPlayed) {
+            playSound('warning')
+            setWarningPlayed(true)
+          }
+          
           if (t <= 1) {
             playSound('levelEnd')
+            setWarningPlayed(false)
             advanceLevel()
             return DEFAULT_BLINDS[currentLevel]?.duration * 60 || 15 * 60
-          }
-          // Warning at 1 minute
-          if (t === 60) {
-            playSound('warning')
           }
           return t - 1
         })
@@ -155,14 +160,12 @@ export default function LiveGameTab() {
       clearInterval(timerRef.current)
     }
     return () => clearInterval(timerRef.current)
-  }, [isRunning, currentLevel])
+  }, [isRunning, currentLevel, warningPlayed, soundSettings])
 
   // Sync timer to database
   useEffect(() => {
     if (gameSession && isAdmin) {
-      const syncInterval = setInterval(() => {
-        syncTimerToDatabase()
-      }, 10000)
+      const syncInterval = setInterval(() => syncTimerToDatabase(), 10000)
       return () => clearInterval(syncInterval)
     }
   }, [gameSession, isRunning, timeRemaining, currentLevel])
@@ -171,43 +174,79 @@ export default function LiveGameTab() {
     if (!gameSession) return
     await supabase
       .from('game_sessions')
-      .update({
-        current_level: currentLevel,
-        time_remaining_seconds: timeRemaining,
-        is_running: isRunning
-      })
+      .update({ current_level: currentLevel, time_remaining_seconds: timeRemaining, is_running: isRunning })
       .eq('id', gameSession.id)
   }
 
-  const playSound = (type) => {
+  // Audio functions
+  const initAudio = () => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)()
+    }
+    return audioContextRef.current
+  }
+
+  const playTone = (frequency, duration, type = 'sine') => {
     try {
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)()
-      const oscillator = audioContext.createOscillator()
-      const gainNode = audioContext.createGain()
+      const ctx = initAudio()
+      const oscillator = ctx.createOscillator()
+      const gainNode = ctx.createGain()
       oscillator.connect(gainNode)
-      gainNode.connect(audioContext.destination)
-      
-      if (type === 'levelEnd') {
-        oscillator.frequency.value = 800
-        gainNode.gain.value = 0.4
-        oscillator.start()
-        setTimeout(() => {
-          oscillator.frequency.value = 1000
-          setTimeout(() => oscillator.stop(), 300)
-        }, 300)
-      } else if (type === 'warning') {
-        oscillator.frequency.value = 600
-        gainNode.gain.value = 0.2
-        oscillator.start()
-        setTimeout(() => oscillator.stop(), 200)
-      } else if (type === 'rebuy') {
-        oscillator.frequency.value = 500
-        gainNode.gain.value = 0.3
-        oscillator.start()
-        setTimeout(() => oscillator.stop(), 150)
-      }
+      gainNode.connect(ctx.destination)
+      oscillator.frequency.value = frequency
+      oscillator.type = type
+      gainNode.gain.value = (soundSettings.volume / 100) * 0.5
+      oscillator.start()
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration)
+      oscillator.stop(ctx.currentTime + duration)
     } catch (e) {
-      console.log('Audio not supported')
+      console.log('Audio not available')
+    }
+  }
+
+  const speak = (text) => {
+    if ('speechSynthesis' in window && soundSettings.voiceStyle !== 'none') {
+      speechSynthesis.cancel()
+      const utterance = new SpeechSynthesisUtterance(text)
+      utterance.volume = soundSettings.volume / 100
+      utterance.rate = soundSettings.voiceStyle === 'southern' ? 0.85 : 0.95
+      speechSynthesis.speak(utterance)
+    }
+  }
+
+  const playSound = (type) => {
+    if (type === 'levelEnd' && soundSettings.levelChange) {
+      playTone(523, 0.2)
+      setTimeout(() => playTone(659, 0.2), 150)
+      setTimeout(() => playTone(784, 0.3), 300)
+      if (soundSettings.voiceStyle !== 'none') {
+        const phrases = {
+          southern: "Blinds goin' up y'all!",
+          professional: "New level. Blinds increasing.",
+          neutral: "Blinds going up"
+        }
+        setTimeout(() => speak(phrases[soundSettings.voiceStyle] || phrases.neutral), 500)
+      }
+    } else if (type === 'warning' && soundSettings.warningEnabled) {
+      playTone(800, 0.1)
+      setTimeout(() => playTone(800, 0.1), 150)
+      if (soundSettings.voiceStyle !== 'none') {
+        const phrases = {
+          southern: "One minute warnin' y'all!",
+          professional: "One minute remaining",
+          neutral: "One minute warning"
+        }
+        setTimeout(() => speak(phrases[soundSettings.voiceStyle] || phrases.neutral), 300)
+      }
+    } else if (type === 'rebuy' && soundSettings.rebuyAlert) {
+      playTone(880, 0.15)
+      setTimeout(() => playTone(1100, 0.2), 150)
+    } else if (type === 'rebuyClosing' && soundSettings.rebuyClosing) {
+      playTone(600, 0.15)
+      setTimeout(() => playTone(800, 0.15), 150)
+      if (soundSettings.voiceStyle !== 'none') {
+        setTimeout(() => speak("Last call for rebuys!"), 300)
+      }
     }
   }
 
@@ -215,10 +254,9 @@ export default function LiveGameTab() {
     const newLevel = Math.min(currentLevel + 1, DEFAULT_BLINDS.length)
     setCurrentLevel(newLevel)
     
-    // Check if rebuys should be cut off
-    if (rebuysCutoffType === 'level' && newLevel === rebuysCutoffLevel) {
-      // Announce rebuys closed
-      playSound('levelEnd')
+    // Check if approaching rebuy cutoff
+    if (rebuysCutoffType === 'level' && newLevel === rebuysCutoffLevel - 1) {
+      playSound('rebuyClosing')
     }
   }
 
@@ -235,6 +273,7 @@ export default function LiveGameTab() {
     setBuyInAmount(settings.buyIn)
     setRebuyAmount(settings.rebuyAmount)
     setBountyAmount(settings.bountyAmount)
+    setStartingChips(settings.startingChips)
 
     const { data: session, error } = await supabase
       .from('game_sessions')
@@ -248,10 +287,7 @@ export default function LiveGameTab() {
       .select()
       .single()
 
-    if (error) {
-      console.error('Error creating session:', error)
-      return
-    }
+    if (error) return
 
     const participantInserts = playerIds.map(userId => ({
       session_id: session.id,
@@ -261,7 +297,6 @@ export default function LiveGameTab() {
     }))
 
     await supabase.from('game_participants').insert(participantInserts)
-
     setGameSession(session)
     setShowStartModal(false)
     fetchGameSession()
@@ -270,12 +305,8 @@ export default function LiveGameTab() {
   const toggleTimer = async () => {
     const newIsRunning = !isRunning
     setIsRunning(newIsRunning)
-    
     if (gameSession) {
-      await supabase
-        .from('game_sessions')
-        .update({ is_running: newIsRunning })
-        .eq('id', gameSession.id)
+      await supabase.from('game_sessions').update({ is_running: newIsRunning }).eq('id', gameSession.id)
     }
   }
 
@@ -283,74 +314,69 @@ export default function LiveGameTab() {
     const newLevel = Math.max(1, Math.min(currentLevel + delta, DEFAULT_BLINDS.length))
     setCurrentLevel(newLevel)
     setTimeRemaining(DEFAULT_BLINDS[newLevel - 1].duration * 60)
-    
+    setWarningPlayed(false)
     if (gameSession) {
-      await supabase
-        .from('game_sessions')
-        .update({ 
-          current_level: newLevel,
-          time_remaining_seconds: DEFAULT_BLINDS[newLevel - 1].duration * 60
-        })
+      await supabase.from('game_sessions')
+        .update({ current_level: newLevel, time_remaining_seconds: DEFAULT_BLINDS[newLevel - 1].duration * 60 })
         .eq('id', gameSession.id)
     }
   }
 
-  const addMinute = () => setTimeRemaining(t => t + 60)
-  const subtractMinute = () => setTimeRemaining(t => Math.max(0, t - 60))
+  const addTime = (seconds) => setTimeRemaining(t => Math.max(0, t + seconds))
 
   const handleRebuy = async (participantId) => {
     if (!rebuysAllowed()) return
-    
     playSound('rebuy')
-    
     const participant = participants.find(p => p.id === participantId)
     const newRebuyCount = (participant?.rebuy_count || 0) + 1
-    
-    await supabase
-      .from('game_participants')
-      .update({ rebuy_count: newRebuyCount })
-      .eq('id', participantId)
-    
+    await supabase.from('game_participants').update({ rebuy_count: newRebuyCount }).eq('id', participantId)
     setTotalRebuys(prev => prev + 1)
     fetchGameSession()
     setShowRebuyModal(false)
+  }
+
+  const requestRebuy = async () => {
+    playSound('rebuy')
+    setRebuyRequests(prev => [...prev, { id: Date.now(), oderId: user.id, name: user.full_name || user.email, time: new Date() }])
   }
 
   const eliminatePlayer = async (participantId, eliminatedById = null) => {
     const activePlayers = participants.filter(p => p.status === 'playing')
     const position = activePlayers.length
 
-    await supabase
-      .from('game_participants')
-      .update({
-        status: 'eliminated',
-        finish_position: position,
-        eliminated_by: eliminatedById,
-        eliminated_at: new Date().toISOString()
-      })
+    await supabase.from('game_participants')
+      .update({ status: 'eliminated', finish_position: position, eliminated_by: eliminatedById, eliminated_at: new Date().toISOString() })
       .eq('id', participantId)
 
     if (activePlayers.length <= 2) {
       const winner = activePlayers.find(p => p.id !== participantId)
       if (winner) {
-        await supabase
-          .from('game_participants')
-          .update({ status: 'winner', finish_position: 1 })
-          .eq('id', winner.id)
-
-        await supabase
-          .from('game_sessions')
-          .update({ is_running: false, ended_at: new Date().toISOString() })
-          .eq('id', gameSession.id)
-        
+        await supabase.from('game_participants').update({ status: 'winner', finish_position: 1 }).eq('id', winner.id)
+        await supabase.from('game_sessions').update({ is_running: false, ended_at: new Date().toISOString() }).eq('id', gameSession.id)
         setIsRunning(false)
         playSound('levelEnd')
       }
     }
-
     fetchGameSession()
     setShowEliminateModal(false)
     setSelectedPlayer(null)
+  }
+
+  const openTVMode = () => {
+    setShowTVMode(true)
+    // Try to use Presentation API for casting
+    if ('presentation' in navigator && navigator.presentation.defaultRequest) {
+      navigator.presentation.defaultRequest.start()
+        .then(connection => console.log('Connected to display:', connection))
+        .catch(err => console.log('Presentation API not available, using fullscreen'))
+    }
+    // Fallback to fullscreen
+    document.documentElement.requestFullscreen?.()
+  }
+
+  const closeTVMode = () => {
+    setShowTVMode(false)
+    document.exitFullscreen?.()
   }
 
   const formatTime = (seconds) => {
@@ -365,13 +391,12 @@ export default function LiveGameTab() {
   const eliminatedPlayers = participants.filter(p => p.status === 'eliminated').sort((a, b) => a.finish_position - b.finish_position)
   const winner = participants.find(p => p.status === 'winner')
   
-  // Calculate prize pool
   const prizePool = (buyInAmount * participants.length) + (rebuyAmount * totalRebuys)
   const bountyPool = bountyAmount * participants.length
+  const avgStack = activePlayers.length > 0 ? Math.round((startingChips * participants.length + startingChips * totalRebuys) / activePlayers.length) : 0
+  const progressPercent = ((DEFAULT_BLINDS[currentLevel - 1]?.duration * 60 - timeRemaining) / (DEFAULT_BLINDS[currentLevel - 1]?.duration * 60)) * 100
 
-  if (loading) {
-    return <div className="px-4 py-8 text-center text-white/50">Loading...</div>
-  }
+  if (loading) return <div className="px-4 py-8 text-center text-white/50">Loading...</div>
 
   if (events.length === 0) {
     return (
@@ -383,20 +408,87 @@ export default function LiveGameTab() {
     )
   }
 
+  // TV MODE - Full screen display for casting
+  if (showTVMode) {
+    return (
+      <div className="fixed inset-0 bg-gradient-to-br from-[#041a10] via-[#0a4d2c] to-[#041a10] z-50 flex flex-col items-center justify-center p-8">
+        <button onClick={closeTVMode} className="absolute top-4 right-4 w-12 h-12 rounded-full bg-white/10 text-white text-2xl">✕</button>
+        
+        {/* League Name */}
+        <div className="font-display text-3xl text-gold tracking-widest mb-2">{currentLeague?.name?.toUpperCase()}</div>
+        
+        {/* Live indicator */}
+        <div className="flex items-center gap-3 mb-8">
+          <div className={`w-3 h-3 rounded-full ${isRunning ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`}></div>
+          <span className={`text-lg ${isRunning ? 'text-green-400' : 'text-yellow-400'}`}>{isRunning ? 'LIVE' : 'PAUSED'}</span>
+        </div>
+
+        {/* Level badge */}
+        <div className="bg-gradient-to-r from-gold to-[#b8860b] px-12 py-4 rounded-full mb-6">
+          <div className="font-display text-4xl font-bold text-black tracking-wider">LEVEL {currentLevel}</div>
+        </div>
+
+        {/* Giant Timer */}
+        <div className={`font-mono text-[180px] leading-none font-medium tracking-tight ${timeRemaining <= 60 ? 'text-red-500 animate-pulse' : 'text-white'}`}>
+          {formatTime(timeRemaining)}
+        </div>
+
+        {/* Progress bar */}
+        <div className="w-4/5 max-w-3xl h-3 bg-white/20 rounded-full my-8 overflow-hidden">
+          <div className="h-full bg-gradient-to-r from-[#b4942f] via-gold to-[#f0d060] rounded-full transition-all" style={{ width: `${progressPercent}%` }}></div>
+        </div>
+
+        {/* Blinds */}
+        <div className="bg-black/40 border-4 border-gold rounded-3xl px-16 py-8 mb-6">
+          <div className="text-white/50 text-sm tracking-widest text-center mb-2">BLINDS</div>
+          <div className="font-display text-7xl text-white text-center">{currentBlinds.sb.toLocaleString()} / {currentBlinds.bb.toLocaleString()}</div>
+          {currentBlinds.ante > 0 && <div className="text-gold text-2xl text-center mt-2">Ante: {currentBlinds.ante}</div>}
+        </div>
+
+        {/* Next level */}
+        {nextBlinds && (
+          <div className="opacity-70 text-center">
+            <div className="text-white/50 text-sm tracking-widest">NEXT LEVEL</div>
+            <div className="font-display text-3xl text-white">{nextBlinds.sb.toLocaleString()} / {nextBlinds.bb.toLocaleString()}</div>
+          </div>
+        )}
+
+        {/* Rebuy status */}
+        <div className={`mt-6 px-6 py-2 rounded-full text-lg font-semibold ${rebuysAllowed() ? 'bg-green-500/20 border border-green-500 text-green-400' : 'bg-red-500/20 border border-red-500 text-red-400'}`}>
+          {rebuysAllowed() ? `🔄 Rebuys Open (until Level ${rebuysCutoffLevel})` : '🚫 Rebuys Closed'}
+        </div>
+
+        {/* Stats bar at bottom */}
+        <div className="absolute bottom-8 left-8 right-8 flex justify-between items-end">
+          <div className="flex gap-16">
+            <div className="text-center">
+              <div className="font-display text-5xl text-white">{activePlayers.length}</div>
+              <div className="text-white/50 text-sm tracking-widest">REMAINING</div>
+            </div>
+            <div className="text-center">
+              <div className="font-display text-5xl text-white">{participants.length}</div>
+              <div className="text-white/50 text-sm tracking-widest">ENTRIES</div>
+            </div>
+            <div className="text-center">
+              <div className="font-display text-5xl text-white">{avgStack.toLocaleString()}</div>
+              <div className="text-white/50 text-sm tracking-widest">AVG STACK</div>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-white/50 text-sm tracking-widest">PRIZE POOL</div>
+            <div className="font-display text-6xl text-gold">${prizePool.toLocaleString()}</div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="px-4 py-4">
       {/* Event selector */}
       {events.length > 1 && (
-        <select
-          value={selectedEvent?.id || ''}
-          onChange={(e) => setSelectedEvent(events.find(ev => ev.id === e.target.value))}
-          className="input mb-4"
-        >
-          {events.map(ev => (
-            <option key={ev.id} value={ev.id}>
-              {ev.title} - {new Date(ev.event_date + 'T00:00').toLocaleDateString()}
-            </option>
-          ))}
+        <select value={selectedEvent?.id || ''} onChange={(e) => setSelectedEvent(events.find(ev => ev.id === e.target.value))} className="input mb-4">
+          {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title} - {new Date(ev.event_date + 'T00:00').toLocaleDateString()}</option>)}
         </select>
       )}
 
@@ -405,18 +497,9 @@ export default function LiveGameTab() {
         <div className="text-center py-8">
           <div className="text-4xl mb-4">🎰</div>
           <h3 className="text-xl font-display text-gold mb-2">{selectedEvent.title}</h3>
-          <p className="text-white/60 mb-6">
-            {new Date(selectedEvent.event_date + 'T00:00').toLocaleDateString('en-US', { 
-              weekday: 'long', month: 'long', day: 'numeric' 
-            })}
-          </p>
+          <p className="text-white/60 mb-6">{new Date(selectedEvent.event_date + 'T00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
           {isAdmin ? (
-            <button
-              onClick={() => setShowStartModal(true)}
-              className="btn btn-primary py-3 px-8 text-lg"
-            >
-              🎲 Start Game
-            </button>
+            <button onClick={() => setShowStartModal(true)} className="btn btn-primary py-3 px-8 text-lg">🎲 Start Game</button>
           ) : (
             <p className="text-white/40">Waiting for game to start...</p>
           )}
@@ -430,103 +513,170 @@ export default function LiveGameTab() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`}></div>
-              <span className={`text-sm font-medium ${isRunning ? 'text-green-400' : 'text-yellow-400'}`}>
-                {isRunning ? 'Live' : 'Paused'}
-              </span>
+              <span className={`text-sm font-medium ${isRunning ? 'text-green-400' : 'text-yellow-400'}`}>{isRunning ? 'Live' : 'Paused'}</span>
+              <span className="text-white/40 text-sm">• {activePlayers.length} players</span>
             </div>
-            {isAdmin && (
-              <button
-                onClick={() => setShowSettingsModal(true)}
-                className="text-white/50 text-sm"
-              >
-                ⚙️ Settings
-              </button>
-            )}
+            <div className="flex gap-2">
+              {isAdmin && (
+                <>
+                  <button onClick={() => setShowSoundSettings(!showSoundSettings)} className="text-white/50 text-sm">🔊</button>
+                  <button onClick={() => setShowSettingsModal(true)} className="text-white/50 text-sm">⚙️</button>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Timer display */}
-          <div className={`card text-center mb-4 ${timeRemaining <= 60 ? 'border-2 border-red-500 animate-pulse' : 'card-gold'}`}>
+          <div className={`card text-center mb-4 ${timeRemaining <= 60 ? 'border-2 border-red-500' : 'card-gold'}`}>
             <div className="text-white/60 text-sm mb-1">Level {currentLevel} of {DEFAULT_BLINDS.length}</div>
-            <div className={`font-display text-6xl mb-2 tracking-wider ${timeRemaining <= 60 ? 'text-red-500' : 'text-white'}`}>
+            <div className={`font-display text-6xl mb-2 tracking-wider ${timeRemaining <= 60 ? 'text-red-500 animate-pulse' : 'text-white'}`}>
               {formatTime(timeRemaining)}
             </div>
+            
+            {/* Progress bar */}
+            <div className="w-full h-2 bg-white/20 rounded-full mb-3 overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-gold to-[#f0d060] rounded-full transition-all" style={{ width: `${progressPercent}%` }}></div>
+            </div>
+
             <div className="text-2xl font-display text-gold">
               {currentBlinds.sb.toLocaleString()}/{currentBlinds.bb.toLocaleString()}
-              {currentBlinds.ante > 0 && (
-                <span className="text-white/60 text-lg"> (ante {currentBlinds.ante})</span>
-              )}
+              {currentBlinds.ante > 0 && <span className="text-white/60 text-lg"> (ante {currentBlinds.ante})</span>}
             </div>
             
-            {nextBlinds && (
-              <div className="text-white/40 text-sm mt-2">
-                Next: {nextBlinds.sb.toLocaleString()}/{nextBlinds.bb.toLocaleString()}
-              </div>
-            )}
+            {nextBlinds && <div className="text-white/40 text-sm mt-2">Next: {nextBlinds.sb.toLocaleString()}/{nextBlinds.bb.toLocaleString()}</div>}
 
             {/* Rebuy status */}
-            <div className={`mt-3 text-sm ${rebuysAllowed() ? 'text-green-400' : 'text-red-400'}`}>
-              {rebuysAllowed() 
-                ? `🔄 Rebuys open until Level ${rebuysCutoffLevel}`
-                : '🚫 Rebuys closed'
-              }
+            <div className={`mt-3 text-sm px-4 py-1 rounded-full inline-block ${rebuysAllowed() ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+              {rebuysAllowed() ? `🔄 Rebuys open until Level ${rebuysCutoffLevel}` : '🚫 Rebuys closed'}
             </div>
             
             {/* Admin controls */}
             {isAdmin && (
               <div className="mt-4 space-y-3">
-                <div className="flex gap-2 justify-center">
-                  <button onClick={() => changeLevel(-1)} className="btn btn-secondary py-2 px-3" disabled={currentLevel <= 1}>
-                    ◀ Prev
-                  </button>
-                  <button onClick={subtractMinute} className="btn btn-secondary py-2 px-3">-1m</button>
-                  <button
-                    onClick={toggleTimer}
-                    className={`btn py-2 px-6 ${isRunning ? 'bg-yellow-600' : 'btn-primary'}`}
-                  >
+                <div className="flex gap-2 justify-center flex-wrap">
+                  <button onClick={() => changeLevel(-1)} className="btn btn-secondary py-2 px-3" disabled={currentLevel <= 1}>◀ Prev</button>
+                  <button onClick={() => addTime(-60)} className="btn btn-secondary py-2 px-3">-1m</button>
+                  <button onClick={toggleTimer} className={`btn py-2 px-6 ${isRunning ? 'bg-yellow-600' : 'btn-primary'}`}>
                     {isRunning ? '⏸ Pause' : '▶ Start'}
                   </button>
-                  <button onClick={addMinute} className="btn btn-secondary py-2 px-3">+1m</button>
-                  <button onClick={() => changeLevel(1)} className="btn btn-secondary py-2 px-3" disabled={currentLevel >= DEFAULT_BLINDS.length}>
-                    Next ▶
-                  </button>
+                  <button onClick={() => addTime(60)} className="btn btn-secondary py-2 px-3">+1m</button>
+                  <button onClick={() => changeLevel(1)} className="btn btn-secondary py-2 px-3" disabled={currentLevel >= DEFAULT_BLINDS.length}>Next ▶</button>
                 </div>
               </div>
             )}
 
-            {!isAdmin && (
-              <div className="text-white/40 text-xs mt-4">
-                Timer controlled by tournament director
-              </div>
-            )}
+            {!isAdmin && <div className="text-white/40 text-xs mt-4">Timer controlled by tournament director</div>}
           </div>
 
-          {/* Prize pool & Rebuy button */}
+          {/* Sound Settings Panel */}
+          {showSoundSettings && isAdmin && (
+            <div className="card mb-4 bg-white/5">
+              <div className="flex items-center justify-between mb-3">
+                <span className="font-medium">🔊 Sound Settings</span>
+                <button onClick={() => setShowSoundSettings(false)} className="text-white/50">✕</button>
+              </div>
+              <div className="space-y-3">
+                <label className="flex items-center justify-between">
+                  <span className="text-sm">Level Change Alert</span>
+                  <input type="checkbox" checked={soundSettings.levelChange} onChange={e => setSoundSettings({...soundSettings, levelChange: e.target.checked})} />
+                </label>
+                <label className="flex items-center justify-between">
+                  <span className="text-sm">Warning Alert</span>
+                  <input type="checkbox" checked={soundSettings.warningEnabled} onChange={e => setSoundSettings({...soundSettings, warningEnabled: e.target.checked})} />
+                </label>
+                <label className="flex items-center justify-between">
+                  <span className="text-sm">Rebuy Alerts</span>
+                  <input type="checkbox" checked={soundSettings.rebuyAlert} onChange={e => setSoundSettings({...soundSettings, rebuyAlert: e.target.checked})} />
+                </label>
+                <div>
+                  <label className="text-sm text-white/60">Voice Style</label>
+                  <select value={soundSettings.voiceStyle} onChange={e => setSoundSettings({...soundSettings, voiceStyle: e.target.value})} className="input mt-1">
+                    <option value="southern">🤠 Southern</option>
+                    <option value="professional">🎩 Professional</option>
+                    <option value="neutral">🗣 Neutral</option>
+                    <option value="none">🔇 No Voice</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm text-white/60">Volume: {soundSettings.volume}%</label>
+                  <input type="range" min="0" max="100" value={soundSettings.volume} onChange={e => setSoundSettings({...soundSettings, volume: parseInt(e.target.value)})} className="w-full" />
+                </div>
+                <button onClick={() => playSound('levelEnd')} className="btn btn-secondary w-full py-2">🔊 Test Sound</button>
+              </div>
+            </div>
+          )}
+
+          {/* Stats row */}
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <div className="card text-center py-3">
+              <div className="font-display text-2xl text-white">{activePlayers.length}</div>
+              <div className="text-xs text-white/50">Remaining</div>
+            </div>
+            <div className="card text-center py-3">
+              <div className="font-display text-2xl text-white">{participants.length + totalRebuys}</div>
+              <div className="text-xs text-white/50">Entries</div>
+            </div>
+            <div className="card text-center py-3">
+              <div className="font-display text-2xl text-white">{avgStack.toLocaleString()}</div>
+              <div className="text-xs text-white/50">Avg Stack</div>
+            </div>
+          </div>
+
+          {/* Prize pool & Bounties */}
           <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="card text-center">
+            <div className="card text-center bg-gradient-to-br from-gold/20 to-gold/5 border border-gold/30">
               <div className="text-white/60 text-xs">Prize Pool</div>
               <div className="font-display text-2xl text-gold">${prizePool.toLocaleString()}</div>
-              <div className="text-xs text-white/40">
-                {participants.length} buy-ins + {totalRebuys} rebuys
-              </div>
+              <div className="text-xs text-white/40">{participants.length} buy-ins + {totalRebuys} rebuys</div>
             </div>
             <div className="card text-center">
               <div className="text-white/60 text-xs">Bounties</div>
               <div className="font-display text-2xl text-chip-red">${bountyPool.toLocaleString()}</div>
-              <div className="text-xs text-white/40">
-                ${bountyAmount} per player
-              </div>
+              <div className="text-xs text-white/40">${bountyAmount} per player</div>
             </div>
           </div>
 
-          {/* Rebuy Alert Button */}
+          {/* Rebuy Alert Button (Admin) */}
           {isAdmin && rebuysAllowed() && (
-            <button
-              onClick={() => setShowRebuyModal(true)}
-              className="w-full card bg-green-600/20 border border-green-500 text-center py-4 mb-4"
-            >
+            <button onClick={() => setShowRebuyModal(true)} className="w-full card bg-green-600/20 border border-green-500 text-center py-4 mb-4">
               <div className="text-2xl mb-1">🔄</div>
               <div className="text-green-400 font-semibold">Record Rebuy</div>
               <div className="text-green-400/60 text-xs">${rebuyAmount} • {totalRebuys} total rebuys</div>
+            </button>
+          )}
+
+          {/* Rebuy Request Button (Player) */}
+          {!isAdmin && rebuysAllowed() && (
+            <button onClick={requestRebuy} className="w-full card bg-chip-red/20 border border-chip-red text-center py-4 mb-4">
+              <div className="text-2xl mb-1">🔄</div>
+              <div className="text-white font-semibold">Request Rebuy</div>
+              <div className="text-white/60 text-xs">Tap to alert tournament director</div>
+            </button>
+          )}
+
+          {/* Rebuy Requests Queue (Admin) */}
+          {isAdmin && rebuyRequests.length > 0 && (
+            <div className="card mb-4 bg-yellow-500/10 border border-yellow-500">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-yellow-400">🔔</span>
+                <span className="font-medium text-yellow-400">Rebuy Requests ({rebuyRequests.length})</span>
+              </div>
+              {rebuyRequests.map(req => (
+                <div key={req.id} className="flex items-center gap-3 p-2 bg-black/20 rounded-lg mb-2">
+                  <span className="flex-1">{req.name}</span>
+                  <button onClick={() => { handleRebuy(req.userId); setRebuyRequests(prev => prev.filter(r => r.id !== req.id)) }} className="btn btn-primary text-xs py-1 px-3">Approve</button>
+                  <button onClick={() => setRebuyRequests(prev => prev.filter(r => r.id !== req.id))} className="text-white/50 text-xs">Deny</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* TV Mode Button */}
+          {isAdmin && (
+            <button onClick={openTVMode} className="w-full card bg-white/5 border border-white/20 text-center py-4 mb-4">
+              <div className="text-2xl mb-1">📺</div>
+              <div className="text-white font-semibold">Open TV Display Mode</div>
+              <div className="text-white/40 text-xs">Full-screen for TV or projector casting</div>
             </button>
           )}
 
@@ -534,9 +684,7 @@ export default function LiveGameTab() {
           <div className="card">
             <div className="flex justify-between items-center mb-3">
               <span className="font-medium">Players</span>
-              <span className="text-gold font-display text-lg">
-                {activePlayers.length}/{participants.length}
-              </span>
+              <span className="text-gold font-display text-lg">{activePlayers.length}/{participants.length}</span>
             </div>
             
             {/* Active players */}
@@ -547,23 +695,17 @@ export default function LiveGameTab() {
                     {getInitials(player.users?.display_name || player.users?.full_name)}
                   </div>
                   <div className="flex-1">
-                    <div className="text-sm font-medium">
-                      {player.users?.display_name || player.users?.full_name}
-                    </div>
+                    <div className="text-sm font-medium">{player.users?.display_name || player.users?.full_name}</div>
                     <div className="text-xs text-white/50">
-                      {player.rebuy_count > 0 && (
-                        <span className="text-yellow-400">{player.rebuy_count} rebuy{player.rebuy_count > 1 ? 's' : ''}</span>
-                      )}
+                      {player.rebuy_count > 0 && <span className="text-yellow-400">{player.rebuy_count} rebuy{player.rebuy_count > 1 ? 's' : ''}</span>}
                     </div>
                   </div>
+                  {/* Bounty chip */}
+                  <div className="w-6 h-6 rounded-full bg-chip-red text-white text-xs flex items-center justify-center font-bold">
+                    {1 + (player.bounties_collected || 0)}
+                  </div>
                   {isAdmin && activePlayers.length > 1 && (
-                    <button
-                      onClick={() => {
-                        setSelectedPlayer(player)
-                        setShowEliminateModal(true)
-                      }}
-                      className="text-red-400 text-xs px-3 py-1 rounded bg-red-500/20"
-                    >
+                    <button onClick={() => { setSelectedPlayer(player); setShowEliminateModal(true) }} className="text-red-400 text-xs px-3 py-1 rounded bg-red-500/20">
                       Bust
                     </button>
                   )}
@@ -582,12 +724,10 @@ export default function LiveGameTab() {
                         {getInitials(player.users?.display_name || player.users?.full_name)}
                       </div>
                       <div className="flex-1">
-                        <div className="text-sm">{player.users?.display_name || player.users?.full_name}</div>
+                        <div className="text-sm line-through">{player.users?.display_name || player.users?.full_name}</div>
                         <div className="text-xs text-red-400">
                           {getOrdinal(player.finish_position)} place
-                          {player.eliminated_by_user && (
-                            <span className="text-white/40"> • by {player.eliminated_by_user.display_name || player.eliminated_by_user.full_name}</span>
-                          )}
+                          {player.eliminated_by_user && <span className="text-white/40"> • by {player.eliminated_by_user.display_name || player.eliminated_by_user.full_name}</span>}
                         </div>
                       </div>
                     </div>
@@ -604,27 +744,15 @@ export default function LiveGameTab() {
         <div className="text-center py-8">
           <div className="text-6xl mb-4">🏆</div>
           <h3 className="text-2xl font-display text-gold mb-2">Game Complete!</h3>
-          {winner && (
-            <p className="text-white text-xl mb-4">
-              🎉 {winner.users?.display_name || winner.users?.full_name} Wins! 🎉
-            </p>
-          )}
+          {winner && <p className="text-white text-xl mb-4">🎉 {winner.users?.display_name || winner.users?.full_name} Wins! 🎉</p>}
           <div className="card mt-4 text-left">
             <h4 className="font-medium mb-3 text-center">Final Results</h4>
             <div className="space-y-2">
               {[winner, ...eliminatedPlayers].filter(Boolean).map((player, idx) => (
                 <div key={player.id} className="flex items-center gap-3 p-2 rounded-lg bg-white/5">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                    idx === 0 ? 'bg-gold text-black' : 
-                    idx === 1 ? 'bg-gray-300 text-black' : 
-                    idx === 2 ? 'bg-amber-700 text-white' : 'bg-white/20'
-                  }`}>
-                    {idx + 1}
-                  </div>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${idx === 0 ? 'bg-gold text-black' : idx === 1 ? 'bg-gray-300 text-black' : idx === 2 ? 'bg-amber-700 text-white' : 'bg-white/20'}`}>{idx + 1}</div>
                   <span className="flex-1">{player.users?.display_name || player.users?.full_name}</span>
-                  {player.rebuy_count > 0 && (
-                    <span className="text-xs text-yellow-400">{player.rebuy_count}R</span>
-                  )}
+                  {player.rebuy_count > 0 && <span className="text-xs text-yellow-400">{player.rebuy_count}R</span>}
                 </div>
               ))}
             </div>
@@ -636,104 +764,39 @@ export default function LiveGameTab() {
         </div>
       )}
 
-      {/* Start Game Modal */}
-      {showStartModal && (
-        <StartGameModal
-          eventId={selectedEvent.id}
-          leagueId={currentLeague.id}
-          defaultBuyIn={buyInAmount}
-          defaultRebuy={rebuyAmount}
-          defaultBounty={bountyAmount}
-          onClose={() => setShowStartModal(false)}
-          onStart={startGame}
-        />
-      )}
-
-      {/* Rebuy Modal */}
-      {showRebuyModal && (
-        <RebuyModal
-          players={activePlayers}
-          rebuyAmount={rebuyAmount}
-          onClose={() => setShowRebuyModal(false)}
-          onRebuy={handleRebuy}
-        />
-      )}
-
-      {/* Eliminate Modal */}
-      {showEliminateModal && selectedPlayer && (
-        <EliminateModal
-          player={selectedPlayer}
-          players={activePlayers}
-          bountyAmount={bountyAmount}
-          onClose={() => {
-            setShowEliminateModal(false)
-            setSelectedPlayer(null)
-          }}
-          onEliminate={eliminatePlayer}
-        />
-      )}
-
-      {/* Settings Modal */}
-      {showSettingsModal && (
-        <SettingsModal
-          rebuysCutoffLevel={rebuysCutoffLevel}
-          rebuysCutoffType={rebuysCutoffType}
-          onSave={(settings) => {
-            setRebuysCutoffLevel(settings.rebuysCutoffLevel)
-            setRebuysCutoffType(settings.rebuysCutoffType)
-            setShowSettingsModal(false)
-          }}
-          onClose={() => setShowSettingsModal(false)}
-        />
-      )}
+      {/* Modals */}
+      {showStartModal && <StartGameModal eventId={selectedEvent.id} leagueId={currentLeague.id} defaultBuyIn={buyInAmount} defaultRebuy={rebuyAmount} defaultBounty={bountyAmount} defaultChips={startingChips} onClose={() => setShowStartModal(false)} onStart={startGame} />}
+      {showRebuyModal && <RebuyModal players={activePlayers} rebuyAmount={rebuyAmount} onClose={() => setShowRebuyModal(false)} onRebuy={handleRebuy} />}
+      {showEliminateModal && selectedPlayer && <EliminateModal player={selectedPlayer} players={activePlayers} bountyAmount={bountyAmount} onClose={() => { setShowEliminateModal(false); setSelectedPlayer(null) }} onEliminate={eliminatePlayer} />}
+      {showSettingsModal && <SettingsModal rebuysCutoffLevel={rebuysCutoffLevel} rebuysCutoffType={rebuysCutoffType} onSave={(s) => { setRebuysCutoffLevel(s.rebuysCutoffLevel); setRebuysCutoffType(s.rebuysCutoffType); setShowSettingsModal(false) }} onClose={() => setShowSettingsModal(false)} />}
     </div>
   )
 }
 
-function StartGameModal({ eventId, leagueId, defaultBuyIn, defaultRebuy, defaultBounty, onClose, onStart }) {
+// ========== MODALS ==========
+
+function StartGameModal({ eventId, leagueId, defaultBuyIn, defaultRebuy, defaultBounty, defaultChips, onClose, onStart }) {
   const [members, setMembers] = useState([])
   const [selectedPlayers, setSelectedPlayers] = useState([])
   const [loading, setLoading] = useState(true)
   const [buyIn, setBuyIn] = useState(defaultBuyIn)
   const [rebuyAmount, setRebuyAmount] = useState(defaultRebuy)
   const [bountyAmount, setBountyAmount] = useState(defaultBounty)
+  const [startingChips, setStartingChips] = useState(defaultChips || 10000)
   const [rebuysCutoffLevel, setRebuysCutoffLevel] = useState(6)
   const [rebuysCutoffType, setRebuysCutoffType] = useState('level')
 
   useEffect(() => {
     const fetchMembers = async () => {
-      const { data: rsvps } = await supabase
-        .from('event_rsvps')
-        .select(`user_id, users (id, full_name, display_name)`)
-        .eq('event_id', eventId)
-        .eq('status', 'going')
-
-      const { data: leagueMembers } = await supabase
-        .from('league_members')
-        .select(`user_id, users (id, full_name, display_name)`)
-        .eq('league_id', leagueId)
-        .eq('status', 'active')
-
+      const { data: rsvps } = await supabase.from('event_rsvps').select(`user_id, users (id, full_name, display_name)`).eq('event_id', eventId).eq('status', 'going')
+      const { data: leagueMembers } = await supabase.from('league_members').select(`user_id, users (id, full_name, display_name)`).eq('league_id', leagueId).eq('status', 'active')
+      
       const goingUsers = rsvps?.map(r => r.users) || []
       const allUsers = leagueMembers?.map(m => m.users) || []
-      
       const allUserIds = new Set()
       const combinedUsers = []
-      
-      goingUsers.forEach(u => {
-        if (u && !allUserIds.has(u.id)) {
-          allUserIds.add(u.id)
-          combinedUsers.push({ ...u, rsvp: 'going' })
-        }
-      })
-      
-      allUsers.forEach(u => {
-        if (u && !allUserIds.has(u.id)) {
-          allUserIds.add(u.id)
-          combinedUsers.push({ ...u, rsvp: 'other' })
-        }
-      })
-
+      goingUsers.forEach(u => { if (u && !allUserIds.has(u.id)) { allUserIds.add(u.id); combinedUsers.push({ ...u, rsvp: 'going' }) } })
+      allUsers.forEach(u => { if (u && !allUserIds.has(u.id)) { allUserIds.add(u.id); combinedUsers.push({ ...u, rsvp: 'other' }) } })
       setMembers(combinedUsers)
       setSelectedPlayers(goingUsers.filter(u => u).map(u => u.id))
       setLoading(false)
@@ -741,23 +804,7 @@ function StartGameModal({ eventId, leagueId, defaultBuyIn, defaultRebuy, default
     fetchMembers()
   }, [eventId, leagueId])
 
-  const togglePlayer = (userId) => {
-    setSelectedPlayers(prev => 
-      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
-    )
-  }
-
-  const handleStart = () => {
-    if (selectedPlayers.length >= 2) {
-      onStart(selectedPlayers, {
-        buyIn,
-        rebuyAmount,
-        bountyAmount,
-        rebuysCutoffLevel,
-        rebuysCutoffType
-      })
-    }
-  }
+  const togglePlayer = (userId) => setSelectedPlayers(prev => prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId])
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
@@ -766,87 +813,34 @@ function StartGameModal({ eventId, leagueId, defaultBuyIn, defaultRebuy, default
           <h2 className="font-display text-xl text-gold">Start Game</h2>
           <button onClick={onClose} className="text-white/60 text-2xl">&times;</button>
         </div>
-
         <div className="p-4 flex-1 overflow-y-auto space-y-4">
-          {/* Game settings */}
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs text-white/50 mb-1">Buy-in</label>
-              <input
-                type="number"
-                value={buyIn}
-                onChange={(e) => setBuyIn(Number(e.target.value))}
-                className="input text-center"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-white/50 mb-1">Rebuy</label>
-              <input
-                type="number"
-                value={rebuyAmount}
-                onChange={(e) => setRebuyAmount(Number(e.target.value))}
-                className="input text-center"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-white/50 mb-1">Bounty</label>
-              <input
-                type="number"
-                value={bountyAmount}
-                onChange={(e) => setBountyAmount(Number(e.target.value))}
-                className="input text-center"
-              />
-            </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="block text-xs text-white/50 mb-1">Buy-in ($)</label><input type="number" value={buyIn} onChange={(e) => setBuyIn(Number(e.target.value))} className="input text-center" /></div>
+            <div><label className="block text-xs text-white/50 mb-1">Rebuy ($)</label><input type="number" value={rebuyAmount} onChange={(e) => setRebuyAmount(Number(e.target.value))} className="input text-center" /></div>
+            <div><label className="block text-xs text-white/50 mb-1">Bounty ($)</label><input type="number" value={bountyAmount} onChange={(e) => setBountyAmount(Number(e.target.value))} className="input text-center" /></div>
+            <div><label className="block text-xs text-white/50 mb-1">Starting Chips</label><input type="number" value={startingChips} onChange={(e) => setStartingChips(Number(e.target.value))} className="input text-center" /></div>
           </div>
-
-          {/* Rebuy cutoff */}
           <div className="bg-white/5 rounded-lg p-3">
             <label className="block text-sm text-white/60 mb-2">Rebuys Close At</label>
             <div className="flex gap-2">
-              <select
-                value={rebuysCutoffType}
-                onChange={(e) => setRebuysCutoffType(e.target.value)}
-                className="input flex-1"
-              >
+              <select value={rebuysCutoffType} onChange={(e) => setRebuysCutoffType(e.target.value)} className="input flex-1">
                 <option value="level">Specific Level</option>
                 <option value="halftime">Halftime</option>
               </select>
               {rebuysCutoffType === 'level' && (
-                <select
-                  value={rebuysCutoffLevel}
-                  onChange={(e) => setRebuysCutoffLevel(Number(e.target.value))}
-                  className="input w-24"
-                >
-                  {[...Array(15)].map((_, i) => (
-                    <option key={i + 1} value={i + 1}>Level {i + 1}</option>
-                  ))}
+                <select value={rebuysCutoffLevel} onChange={(e) => setRebuysCutoffLevel(Number(e.target.value))} className="input w-24">
+                  {[...Array(15)].map((_, i) => <option key={i + 1} value={i + 1}>Level {i + 1}</option>)}
                 </select>
               )}
             </div>
           </div>
-
-          {/* Player selection */}
           <div>
-            <p className="text-white/60 text-sm mb-2">Select players ({selectedPlayers.length} selected):</p>
-            {loading ? (
-              <div className="text-center py-4 text-white/50">Loading...</div>
-            ) : (
+            <p className="text-white/60 text-sm mb-2">Select players ({selectedPlayers.length}):</p>
+            {loading ? <div className="text-center py-4 text-white/50">Loading...</div> : (
               <div className="space-y-2 max-h-[40vh] overflow-y-auto">
                 {members.map(member => (
-                  <button
-                    key={member.id}
-                    onClick={() => togglePlayer(member.id)}
-                    className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${
-                      selectedPlayers.includes(member.id)
-                        ? 'bg-green-600/30 border border-green-500'
-                        : 'bg-white/5 border border-transparent'
-                    }`}
-                  >
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${
-                      selectedPlayers.includes(member.id) ? 'bg-green-600' : 'bg-white/20'
-                    }`}>
-                      {getInitials(member.display_name || member.full_name)}
-                    </div>
+                  <button key={member.id} onClick={() => togglePlayer(member.id)} className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${selectedPlayers.includes(member.id) ? 'bg-green-600/30 border border-green-500' : 'bg-white/5 border border-transparent'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${selectedPlayers.includes(member.id) ? 'bg-green-600' : 'bg-white/20'}`}>{getInitials(member.display_name || member.full_name)}</div>
                     <span className="flex-1 text-left">{member.display_name || member.full_name}</span>
                     {member.rsvp === 'going' && <span className="text-xs text-green-400">RSVP'd</span>}
                     {selectedPlayers.includes(member.id) && <span className="text-green-400">✓</span>}
@@ -856,13 +850,8 @@ function StartGameModal({ eventId, leagueId, defaultBuyIn, defaultRebuy, default
             )}
           </div>
         </div>
-
         <div className="p-4 border-t border-white/10">
-          <button
-            onClick={handleStart}
-            disabled={selectedPlayers.length < 2}
-            className="w-full btn btn-primary py-3 disabled:opacity-50"
-          >
+          <button onClick={() => selectedPlayers.length >= 2 && onStart(selectedPlayers, { buyIn, rebuyAmount, bountyAmount, startingChips, rebuysCutoffLevel, rebuysCutoffType })} disabled={selectedPlayers.length < 2} className="w-full btn btn-primary py-3 disabled:opacity-50">
             Start Game with {selectedPlayers.length} Players
           </button>
         </div>
@@ -883,18 +872,10 @@ function RebuyModal({ players, rebuyAmount, onClose, onRebuy }) {
           <p className="text-white/60 text-sm mb-4">Who is rebuying? (${rebuyAmount})</p>
           <div className="space-y-2 max-h-[50vh] overflow-y-auto">
             {players.map(player => (
-              <button
-                key={player.id}
-                onClick={() => onRebuy(player.id)}
-                className="w-full flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-green-600/20 transition-colors"
-              >
-                <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center text-sm font-semibold">
-                  {getInitials(player.users?.display_name || player.users?.full_name)}
-                </div>
+              <button key={player.id} onClick={() => onRebuy(player.id)} className="w-full flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-green-600/20 transition-colors">
+                <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center text-sm font-semibold">{getInitials(player.users?.display_name || player.users?.full_name)}</div>
                 <span className="flex-1 text-left">{player.users?.display_name || player.users?.full_name}</span>
-                {player.rebuy_count > 0 && (
-                  <span className="text-yellow-400 text-sm">{player.rebuy_count}R</span>
-                )}
+                {player.rebuy_count > 0 && <span className="text-yellow-400 text-sm">{player.rebuy_count}R</span>}
               </button>
             ))}
           </div>
@@ -911,49 +892,28 @@ function EliminateModal({ player, players, bountyAmount, onClose, onEliminate })
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
       <div className="bg-felt-dark rounded-2xl w-full max-w-sm">
-        <div className="p-4 border-b border-white/10">
-          <h2 className="font-display text-xl text-red-400">💀 Eliminate Player</h2>
-        </div>
+        <div className="p-4 border-b border-white/10"><h2 className="font-display text-xl text-red-400">💀 Eliminate Player</h2></div>
         <div className="p-4">
           <div className="text-center mb-4">
-            <div className="w-16 h-16 rounded-full bg-red-600/30 flex items-center justify-center text-2xl font-semibold mx-auto mb-2">
-              {getInitials(player.users?.display_name || player.users?.full_name)}
-            </div>
+            <div className="w-16 h-16 rounded-full bg-red-600/30 flex items-center justify-center text-2xl font-semibold mx-auto mb-2">{getInitials(player.users?.display_name || player.users?.full_name)}</div>
             <div className="text-white font-medium">{player.users?.display_name || player.users?.full_name}</div>
           </div>
-
           {bountyAmount > 0 && (
             <div className="mb-4">
               <p className="text-white/60 text-sm mb-2">Who gets the ${bountyAmount} bounty?</p>
               <div className="space-y-2 max-h-[30vh] overflow-y-auto">
                 {otherPlayers.map(p => (
-                  <button
-                    key={p.id}
-                    onClick={() => setEliminatedBy(p.id)}
-                    className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors ${
-                      eliminatedBy === p.id ? 'bg-gold/30 border border-gold' : 'bg-white/5'
-                    }`}
-                  >
-                    <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center text-xs font-semibold">
-                      {getInitials(p.users?.display_name || p.users?.full_name)}
-                    </div>
+                  <button key={p.id} onClick={() => setEliminatedBy(p.id)} className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors ${eliminatedBy === p.id ? 'bg-gold/30 border border-gold' : 'bg-white/5'}`}>
+                    <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center text-xs font-semibold">{getInitials(p.users?.display_name || p.users?.full_name)}</div>
                     <span className="text-sm">{p.users?.display_name || p.users?.full_name}</span>
                   </button>
                 ))}
               </div>
             </div>
           )}
-
           <div className="flex gap-3">
-            <button onClick={onClose} className="flex-1 py-3 rounded-xl bg-white/10 text-white">
-              Cancel
-            </button>
-            <button
-              onClick={() => onEliminate(player.id, eliminatedBy)}
-              className="flex-1 py-3 rounded-xl bg-red-600 text-white font-semibold"
-            >
-              Confirm Bust
-            </button>
+            <button onClick={onClose} className="flex-1 py-3 rounded-xl bg-white/10 text-white">Cancel</button>
+            <button onClick={() => onEliminate(player.id, eliminatedBy)} className="flex-1 py-3 rounded-xl bg-red-600 text-white font-semibold">Confirm Bust</button>
           </div>
         </div>
       </div>
@@ -976,47 +936,24 @@ function SettingsModal({ rebuysCutoffLevel, rebuysCutoffType, onSave, onClose })
           <div>
             <label className="block text-sm text-white/60 mb-2">Rebuys Close At</label>
             <div className="flex gap-2">
-              <select
-                value={cutoffType}
-                onChange={(e) => setCutoffType(e.target.value)}
-                className="input flex-1"
-              >
+              <select value={cutoffType} onChange={(e) => setCutoffType(e.target.value)} className="input flex-1">
                 <option value="level">Specific Level</option>
                 <option value="halftime">Halftime</option>
               </select>
               {cutoffType === 'level' && (
-                <select
-                  value={cutoffLevel}
-                  onChange={(e) => setCutoffLevel(Number(e.target.value))}
-                  className="input w-24"
-                >
-                  {[...Array(15)].map((_, i) => (
-                    <option key={i + 1} value={i + 1}>Level {i + 1}</option>
-                  ))}
+                <select value={cutoffLevel} onChange={(e) => setCutoffLevel(Number(e.target.value))} className="input w-24">
+                  {[...Array(15)].map((_, i) => <option key={i + 1} value={i + 1}>Level {i + 1}</option>)}
                 </select>
               )}
             </div>
           </div>
-
-          <button
-            onClick={() => onSave({ rebuysCutoffLevel: cutoffLevel, rebuysCutoffType: cutoffType })}
-            className="w-full btn btn-primary py-3"
-          >
-            Save Settings
-          </button>
+          <button onClick={() => onSave({ rebuysCutoffLevel: cutoffLevel, rebuysCutoffType: cutoffType })} className="w-full btn btn-primary py-3">Save Settings</button>
         </div>
       </div>
     </div>
   )
 }
 
-function getInitials(name) {
-  if (!name) return '?'
-  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-}
-
-function getOrdinal(n) {
-  const s = ['th', 'st', 'nd', 'rd']
-  const v = n % 100
-  return n + (s[(v - 20) % 10] || s[v] || s[0])
-}
+// ========== HELPERS ==========
+function getInitials(name) { if (!name) return '?'; return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) }
+function getOrdinal(n) { const s = ['th', 'st', 'nd', 'rd']; const v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]) }
