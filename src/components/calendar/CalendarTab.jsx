@@ -9,6 +9,7 @@ export default function CalendarTab() {
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [editingEvent, setEditingEvent] = useState(null)
 
   useEffect(() => {
     if (currentLeague) {
@@ -47,6 +48,18 @@ export default function CalendarTab() {
       new Date(a.event_date) - new Date(b.event_date)
     ))
     setShowCreateModal(false)
+  }
+
+  const handleEventUpdated = (updatedEvent) => {
+    setEvents(prev => prev.map(e => 
+      e.id === updatedEvent.id ? { ...e, ...updatedEvent } : e
+    ).sort((a, b) => new Date(a.event_date) - new Date(b.event_date)))
+    setEditingEvent(null)
+  }
+
+  const handleEventDeleted = (eventId) => {
+    setEvents(prev => prev.filter(e => e.id !== eventId))
+    setEditingEvent(null)
   }
 
   const handleRsvpUpdate = (eventId, newRsvp) => {
@@ -105,26 +118,40 @@ export default function CalendarTab() {
               event={event} 
               isFirst={idx === 0}
               userId={user?.id}
+              isAdmin={isAdmin}
               onRsvpUpdate={(status) => handleRsvpUpdate(event.id, status)}
+              onEdit={() => setEditingEvent(event)}
             />
           ))}
         </div>
       )}
 
       {showCreateModal && (
-        <CreateEventModal
+        <EventModal
           leagueId={currentLeague.id}
           userId={user.id}
           defaultBuyIn={currentLeague.default_buy_in}
           onClose={() => setShowCreateModal(false)}
-          onCreated={handleEventCreated}
+          onSaved={handleEventCreated}
+        />
+      )}
+
+      {editingEvent && (
+        <EventModal
+          leagueId={currentLeague.id}
+          userId={user.id}
+          defaultBuyIn={currentLeague.default_buy_in}
+          event={editingEvent}
+          onClose={() => setEditingEvent(null)}
+          onSaved={handleEventUpdated}
+          onDeleted={handleEventDeleted}
         />
       )}
     </div>
   )
 }
 
-function EventCard({ event, isFirst, userId, onRsvpUpdate }) {
+function EventCard({ event, isFirst, userId, isAdmin, onRsvpUpdate, onEdit }) {
   const [myRsvp, setMyRsvp] = useState(null)
   const [saving, setSaving] = useState(false)
 
@@ -205,6 +232,14 @@ function EventCard({ event, isFirst, userId, onRsvpUpdate }) {
             ${event.buy_in || 20} Buy-in • Max {event.max_players || 10} players
           </p>
         </div>
+        {isAdmin && (
+          <button 
+            onClick={onEdit}
+            className="text-white/40 hover:text-white p-2"
+          >
+            ✏️
+          </button>
+        )}
       </div>
 
       <div className="border-t border-white/10 pt-4 mb-4">
@@ -302,25 +337,27 @@ function EventCard({ event, isFirst, userId, onRsvpUpdate }) {
   )
 }
 
-function CreateEventModal({ leagueId, userId, defaultBuyIn, onClose, onCreated }) {
+function EventModal({ leagueId, userId, defaultBuyIn, event, onClose, onSaved, onDeleted }) {
+  const isEditing = !!event
   const [loading, setLoading] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [error, setError] = useState('')
   const [savedLocations, setSavedLocations] = useState([])
   const [showNewLocation, setShowNewLocation] = useState(false)
   const [saveNewLocation, setSaveNewLocation] = useState(false)
   const [form, setForm] = useState({
-    title: '',
-    event_date: '',
-    start_time: '19:00',
+    title: event?.title || '',
+    event_date: event?.event_date || '',
+    start_time: event?.start_time?.substring(0, 5) || '19:00',
     location_id: '',
-    location_name: '',
-    location_address: '',
-    buy_in: defaultBuyIn || 20,
-    max_players: 10,
-    host_notes: ''
+    location_name: event?.location_name || '',
+    location_address: event?.location_address || '',
+    buy_in: event?.buy_in || defaultBuyIn || 20,
+    max_players: event?.max_players || 10,
+    host_notes: event?.host_notes || ''
   })
 
-  // Fetch saved locations
   useEffect(() => {
     const fetchLocations = async () => {
       const { data } = await supabase
@@ -331,14 +368,21 @@ function CreateEventModal({ leagueId, userId, defaultBuyIn, onClose, onCreated }
       
       if (data) {
         setSavedLocations(data)
-        // If no saved locations, show the new location form
         if (data.length === 0) {
           setShowNewLocation(true)
+        } else if (isEditing && event?.location_name) {
+          // Check if current location matches a saved one
+          const match = data.find(l => l.name === event.location_name)
+          if (match) {
+            setForm(f => ({ ...f, location_id: match.id }))
+          } else {
+            setShowNewLocation(true)
+          }
         }
       }
     }
     fetchLocations()
-  }, [leagueId])
+  }, [leagueId, isEditing, event])
 
   const handleLocationSelect = (locationId) => {
     if (locationId === 'new') {
@@ -364,7 +408,6 @@ function CreateEventModal({ leagueId, userId, defaultBuyIn, onClose, onCreated }
     setLoading(true)
 
     try {
-      // If saving new location, create it first
       if (showNewLocation && saveNewLocation && form.location_name) {
         await supabase
           .from('saved_locations')
@@ -376,30 +419,62 @@ function CreateEventModal({ leagueId, userId, defaultBuyIn, onClose, onCreated }
           })
       }
 
-      const { data, error: insertError } = await supabase
-        .from('events')
-        .insert({
-          league_id: leagueId,
-          created_by: userId,
-          title: form.title,
-          event_date: form.event_date,
-          start_time: form.start_time || null,
-          location_name: form.location_name || null,
-          location_address: form.location_address || null,
-          buy_in: form.buy_in,
-          max_players: form.max_players,
-          host_notes: form.host_notes || null,
-          status: 'scheduled'
-        })
-        .select()
-        .single()
+      const eventData = {
+        title: form.title,
+        event_date: form.event_date,
+        start_time: form.start_time || null,
+        location_name: form.location_name || null,
+        location_address: form.location_address || null,
+        buy_in: form.buy_in,
+        max_players: form.max_players,
+        host_notes: form.host_notes || null
+      }
 
-      if (insertError) throw insertError
-      onCreated(data)
+      if (isEditing) {
+        const { data, error: updateError } = await supabase
+          .from('events')
+          .update(eventData)
+          .eq('id', event.id)
+          .select()
+          .single()
+
+        if (updateError) throw updateError
+        onSaved(data)
+      } else {
+        const { data, error: insertError } = await supabase
+          .from('events')
+          .insert({
+            ...eventData,
+            league_id: leagueId,
+            created_by: userId,
+            status: 'scheduled'
+          })
+          .select()
+          .single()
+
+        if (insertError) throw insertError
+        onSaved(data)
+      }
     } catch (err) {
-      setError(err.message || 'Failed to create event')
+      setError(err.message || 'Failed to save event')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    try {
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', event.id)
+
+      if (error) throw error
+      onDeleted(event.id)
+    } catch (err) {
+      setError(err.message || 'Failed to delete event')
+      setDeleting(false)
     }
   }
 
@@ -407,7 +482,9 @@ function CreateEventModal({ leagueId, userId, defaultBuyIn, onClose, onCreated }
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
       <div className="bg-felt-dark rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="p-4 border-b border-white/10 flex items-center justify-between">
-          <h2 className="font-display text-xl text-gold">New Game Night</h2>
+          <h2 className="font-display text-xl text-gold">
+            {isEditing ? 'Edit Event' : 'New Game Night'}
+          </h2>
           <button onClick={onClose} className="text-white/60 text-2xl leading-none">&times;</button>
         </div>
 
@@ -452,7 +529,6 @@ function CreateEventModal({ leagueId, userId, defaultBuyIn, onClose, onCreated }
             </div>
           </div>
 
-          {/* Location Section */}
           <div>
             <label className="block text-sm text-white/60 mb-1">Location</label>
             
@@ -472,7 +548,6 @@ function CreateEventModal({ leagueId, userId, defaultBuyIn, onClose, onCreated }
               </select>
             )}
 
-            {/* Show selected location details */}
             {!showNewLocation && form.location_id && (
               <div className="bg-white/5 rounded-lg p-3 text-sm">
                 <div className="font-medium text-white">{form.location_name}</div>
@@ -482,7 +557,6 @@ function CreateEventModal({ leagueId, userId, defaultBuyIn, onClose, onCreated }
               </div>
             )}
 
-            {/* New location form */}
             {showNewLocation && (
               <div className="space-y-3 bg-white/5 rounded-lg p-3">
                 <div>
@@ -505,15 +579,17 @@ function CreateEventModal({ leagueId, userId, defaultBuyIn, onClose, onCreated }
                     placeholder="123 Main St, City, ST 12345"
                   />
                 </div>
-                <label className="flex items-center gap-2 text-sm text-white/70 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={saveNewLocation}
-                    onChange={(e) => setSaveNewLocation(e.target.checked)}
-                    className="w-4 h-4 rounded border-white/30 bg-white/10"
-                  />
-                  Save this location for future events
-                </label>
+                {!isEditing && (
+                  <label className="flex items-center gap-2 text-sm text-white/70 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={saveNewLocation}
+                      onChange={(e) => setSaveNewLocation(e.target.checked)}
+                      className="w-4 h-4 rounded border-white/30 bg-white/10"
+                    />
+                    Save this location for future events
+                  </label>
+                )}
               </div>
             )}
           </div>
@@ -556,9 +632,44 @@ function CreateEventModal({ leagueId, userId, defaultBuyIn, onClose, onCreated }
               Cancel
             </button>
             <button type="submit" disabled={loading} className="flex-1 py-3 rounded-xl bg-gold text-felt-dark font-semibold disabled:opacity-50">
-              {loading ? 'Creating...' : 'Create Event'}
+              {loading ? 'Saving...' : (isEditing ? 'Save Changes' : 'Create Event')}
             </button>
           </div>
+
+          {isEditing && (
+            <div className="pt-2 border-t border-white/10">
+              {!showDeleteConfirm ? (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="w-full py-3 text-red-400 text-sm"
+                >
+                  Delete Event
+                </button>
+              ) : (
+                <div className="text-center">
+                  <p className="text-white/60 text-sm mb-3">Are you sure? This cannot be undone.</p>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="flex-1 py-2 rounded-lg bg-white/10 text-white text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDelete}
+                      disabled={deleting}
+                      className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm disabled:opacity-50"
+                    >
+                      {deleting ? 'Deleting...' : 'Yes, Delete'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </form>
       </div>
     </div>
