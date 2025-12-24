@@ -305,10 +305,14 @@ function EventCard({ event, isFirst, userId, onRsvpUpdate }) {
 function CreateEventModal({ leagueId, userId, defaultBuyIn, onClose, onCreated }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [savedLocations, setSavedLocations] = useState([])
+  const [showNewLocation, setShowNewLocation] = useState(false)
+  const [saveNewLocation, setSaveNewLocation] = useState(false)
   const [form, setForm] = useState({
     title: '',
     event_date: '',
     start_time: '19:00',
+    location_id: '',
     location_name: '',
     location_address: '',
     buy_in: defaultBuyIn || 20,
@@ -316,12 +320,62 @@ function CreateEventModal({ leagueId, userId, defaultBuyIn, onClose, onCreated }
     host_notes: ''
   })
 
+  // Fetch saved locations
+  useEffect(() => {
+    const fetchLocations = async () => {
+      const { data } = await supabase
+        .from('saved_locations')
+        .select('*')
+        .eq('league_id', leagueId)
+        .order('name')
+      
+      if (data) {
+        setSavedLocations(data)
+        // If no saved locations, show the new location form
+        if (data.length === 0) {
+          setShowNewLocation(true)
+        }
+      }
+    }
+    fetchLocations()
+  }, [leagueId])
+
+  const handleLocationSelect = (locationId) => {
+    if (locationId === 'new') {
+      setShowNewLocation(true)
+      setForm(f => ({ ...f, location_id: '', location_name: '', location_address: '' }))
+    } else {
+      setShowNewLocation(false)
+      const location = savedLocations.find(l => l.id === locationId)
+      if (location) {
+        setForm(f => ({ 
+          ...f, 
+          location_id: location.id,
+          location_name: location.name, 
+          location_address: location.address || ''
+        }))
+      }
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setLoading(true)
 
     try {
+      // If saving new location, create it first
+      if (showNewLocation && saveNewLocation && form.location_name) {
+        await supabase
+          .from('saved_locations')
+          .insert({
+            league_id: leagueId,
+            name: form.location_name,
+            address: form.location_address || null,
+            created_by: userId
+          })
+      }
+
       const { data, error: insertError } = await supabase
         .from('events')
         .insert({
@@ -398,26 +452,70 @@ function CreateEventModal({ leagueId, userId, defaultBuyIn, onClose, onCreated }
             </div>
           </div>
 
+          {/* Location Section */}
           <div>
-            <label className="block text-sm text-white/60 mb-1">Location Name</label>
-            <input
-              type="text"
-              value={form.location_name}
-              onChange={(e) => setForm(f => ({ ...f, location_name: e.target.value }))}
-              className="input"
-              placeholder="e.g., Ron's House"
-            />
-          </div>
+            <label className="block text-sm text-white/60 mb-1">Location</label>
+            
+            {savedLocations.length > 0 && (
+              <select
+                value={showNewLocation ? 'new' : form.location_id}
+                onChange={(e) => handleLocationSelect(e.target.value)}
+                className="input mb-2"
+              >
+                <option value="">Select a saved location...</option>
+                {savedLocations.map(loc => (
+                  <option key={loc.id} value={loc.id}>
+                    📍 {loc.name}
+                  </option>
+                ))}
+                <option value="new">+ Add New Location</option>
+              </select>
+            )}
 
-          <div>
-            <label className="block text-sm text-white/60 mb-1">Address (optional)</label>
-            <input
-              type="text"
-              value={form.location_address}
-              onChange={(e) => setForm(f => ({ ...f, location_address: e.target.value }))}
-              className="input"
-              placeholder="123 Main St"
-            />
+            {/* Show selected location details */}
+            {!showNewLocation && form.location_id && (
+              <div className="bg-white/5 rounded-lg p-3 text-sm">
+                <div className="font-medium text-white">{form.location_name}</div>
+                {form.location_address && (
+                  <div className="text-white/50 text-xs mt-1">{form.location_address}</div>
+                )}
+              </div>
+            )}
+
+            {/* New location form */}
+            {showNewLocation && (
+              <div className="space-y-3 bg-white/5 rounded-lg p-3">
+                <div>
+                  <label className="block text-xs text-white/50 mb-1">Location Name</label>
+                  <input
+                    type="text"
+                    value={form.location_name}
+                    onChange={(e) => setForm(f => ({ ...f, location_name: e.target.value }))}
+                    className="input"
+                    placeholder="e.g., Ron's House"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-white/50 mb-1">Address (optional)</label>
+                  <input
+                    type="text"
+                    value={form.location_address}
+                    onChange={(e) => setForm(f => ({ ...f, location_address: e.target.value }))}
+                    className="input"
+                    placeholder="123 Main St, City, ST 12345"
+                  />
+                </div>
+                <label className="flex items-center gap-2 text-sm text-white/70 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={saveNewLocation}
+                    onChange={(e) => setSaveNewLocation(e.target.checked)}
+                    className="w-4 h-4 rounded border-white/30 bg-white/10"
+                  />
+                  Save this location for future events
+                </label>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
