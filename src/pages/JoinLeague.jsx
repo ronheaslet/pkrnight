@@ -3,10 +3,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useLeague } from '../contexts/LeagueContext'
 
-export default function JoinLeague() {
+export default function JoinLeague({ hasLeagues = false }) {
   const navigate = useNavigate()
   const { signOut, profile } = useAuth()
-  const { joinLeague } = useLeague()
+  const { joinLeague, leagues } = useLeague()
   
   const [inviteCode, setInviteCode] = useState('')
   const [error, setError] = useState('')
@@ -48,10 +48,44 @@ export default function JoinLeague() {
       {/* Main content */}
       <div className="flex-1 flex flex-col items-center justify-center">
         <div className="text-4xl mb-4">🎰</div>
-        <h1 className="font-display text-2xl text-gold mb-2">Join a League</h1>
+        <h1 className="font-display text-2xl text-gold mb-2">
+          {hasLeagues ? 'Your Leagues' : 'Join a League'}
+        </h1>
         <p className="text-white/60 text-sm text-center mb-8 max-w-xs">
-          Enter an invite code to join an existing league, or create your own.
+          {hasLeagues 
+            ? 'Go to your existing league or join another one.'
+            : 'Enter an invite code to join an existing league, or create your own.'}
         </p>
+
+        {/* Show existing leagues if user has them */}
+        {hasLeagues && leagues.length > 0 && (
+          <div className="w-full max-w-xs mb-6">
+            <div className="text-xs text-white/50 mb-2">Your Leagues</div>
+            <div className="space-y-2 mb-4">
+              {leagues.map(league => (
+                <button
+                  key={league.id}
+                  onClick={() => navigate('/app')}
+                  className="w-full flex items-center gap-3 p-4 rounded-xl bg-gold/20 border-2 border-gold hover:bg-gold/30 transition-colors"
+                >
+                  <span className="text-2xl">🃏</span>
+                  <div className="text-left flex-1">
+                    <div className="font-semibold text-white">{league.name}</div>
+                    <div className="text-xs text-white/50">/{league.slug}</div>
+                  </div>
+                  <span className="text-gold">→</span>
+                </button>
+              ))}
+            </div>
+            
+            {/* Divider */}
+            <div className="flex items-center gap-4 mb-4">
+              <div className="flex-1 h-px bg-white/20"></div>
+              <span className="text-white/40 text-sm">or join another</span>
+              <div className="flex-1 h-px bg-white/20"></div>
+            </div>
+          </div>
+        )}
 
         {/* Join form */}
         <form onSubmit={handleJoin} className="w-full max-w-xs mb-8">
