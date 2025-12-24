@@ -38,15 +38,21 @@ function ProtectedRoute({ children }) {
   return children
 }
 
-// Redirect if already authenticated
+// Redirect if already authenticated - check for leagues
 function PublicRoute({ children }) {
-  const { isAuthenticated, loading } = useAuth()
+  const { isAuthenticated, loading: authLoading } = useAuth()
+  const { leagues, loading: leagueLoading } = useLeague()
 
-  if (loading) {
+  if (authLoading || (isAuthenticated && leagueLoading)) {
     return <LoadingScreen />
   }
 
   if (isAuthenticated) {
+    // If user has leagues, go to dashboard
+    if (leagues.length > 0) {
+      return <Navigate to="/app" replace />
+    }
+    // Otherwise, go to join page
     return <Navigate to="/join" replace />
   }
 
@@ -55,7 +61,7 @@ function PublicRoute({ children }) {
 
 // Dashboard route - requires league
 function DashboardRoute() {
-  const { leagues, loading, currentLeague } = useLeague()
+  const { leagues, loading } = useLeague()
   
   if (loading) {
     return <LoadingScreen />
@@ -67,6 +73,18 @@ function DashboardRoute() {
   }
   
   return <Dashboard />
+}
+
+// Join route - redirect to app if user has leagues
+function JoinRoute() {
+  const { leagues, loading } = useLeague()
+  
+  if (loading) {
+    return <LoadingScreen />
+  }
+  
+  // If user already has leagues, show option to go to app
+  return <JoinLeague hasLeagues={leagues.length > 0} />
 }
 
 function App() {
@@ -92,7 +110,7 @@ function App() {
       {/* Auth required but no league required */}
       <Route path="/join" element={
         <ProtectedRoute>
-          <JoinLeague />
+          <JoinRoute />
         </ProtectedRoute>
       } />
       <Route path="/create" element={
