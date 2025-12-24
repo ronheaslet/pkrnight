@@ -789,16 +789,31 @@ function StartGameModal({ eventId, leagueId, defaultBuyIn, defaultRebuy, default
   useEffect(() => {
     const fetchMembers = async () => {
       const { data: rsvps } = await supabase.from('event_rsvps').select(`user_id, users (id, full_name, display_name)`).eq('event_id', eventId).eq('status', 'going')
-      const { data: leagueMembers } = await supabase.from('league_members').select(`user_id, users (id, full_name, display_name)`).eq('league_id', leagueId).eq('status', 'active')
+      const { data: leagueMembers } = await supabase.from('league_members').select(`user_id, member_type, guest_buyins_count, big_game_eligible, users (id, full_name, display_name)`).eq('league_id', leagueId).eq('status', 'active')
       
-      const goingUsers = rsvps?.map(r => r.users) || []
-      const allUsers = leagueMembers?.map(m => m.users) || []
-      const allUserIds = new Set()
-      const combinedUsers = []
-      goingUsers.forEach(u => { if (u && !allUserIds.has(u.id)) { allUserIds.add(u.id); combinedUsers.push({ ...u, rsvp: 'going' }) } })
-      allUsers.forEach(u => { if (u && !allUserIds.has(u.id)) { allUserIds.add(u.id); combinedUsers.push({ ...u, rsvp: 'other' }) } })
+      const goingUserIds = new Set(rsvps?.map(r => r.user_id) || [])
+      const memberMap = {}
+      leagueMembers?.forEach(m => { if (m.users) memberMap[m.user_id] = m })
+      
+      const combinedUsers = leagueMembers?.map(m => ({
+        ...m.users,
+        member_type: m.member_type || 'guest',
+        guest_buyins_count: m.guest_buyins_count || 0,
+        big_game_eligible: m.big_game_eligible,
+        rsvp: goingUserIds.has(m.user_id) ? 'going' : 'other'
+      })) || []
+      
+      // Sort: RSVP'd first, then paid members, then guests
+      combinedUsers.sort((a, b) => {
+        if (a.rsvp === 'going' && b.rsvp !== 'going') return -1
+        if (b.rsvp === 'going' && a.rsvp !== 'going') return 1
+        if (a.member_type === 'paid' && b.member_type !== 'paid') return -1
+        if (b.member_type === 'paid' && a.member_type !== 'paid') return 1
+        return 0
+      })
+      
       setMembers(combinedUsers)
-      setSelectedPlayers(goingUsers.filter(u => u).map(u => u.id))
+      setSelectedPlayers(combinedUsers.filter(u => u.rsvp === 'going').map(u => u.id))
       setLoading(false)
     }
     fetchMembers()
@@ -840,8 +855,17 @@ function StartGameModal({ eventId, leagueId, defaultBuyIn, defaultRebuy, default
               <div className="space-y-2 max-h-[40vh] overflow-y-auto">
                 {members.map(member => (
                   <button key={member.id} onClick={() => togglePlayer(member.id)} className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${selectedPlayers.includes(member.id) ? 'bg-green-600/30 border border-green-500' : 'bg-white/5 border border-transparent'}`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${selectedPlayers.includes(member.id) ? 'bg-green-600' : 'bg-white/20'}`}>{getInitials(member.display_name || member.full_name)}</div>
-                    <span className="flex-1 text-left">{member.display_name || member.full_name}</span>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${member.member_type === 'paid' ? 'bg-green-600' : 'bg-gray-500'}`}>{getInitials(member.display_name || member.full_name)}</div>
+                    <div className="flex-1 text-left">
+                      <div>{member.display_name || member.full_name}</div>
+                      <div className="text-xs text-white/50">
+                        {member.member_type === 'paid' ? (
+                          <span className="text-green-400">✓ Paid Member</span>
+                        ) : (
+                          <span className="text-yellow-400">Guest (+$10 fee)</span>
+                        )}
+                      </div>
+                    </div>
                     {member.rsvp === 'going' && <span className="text-xs text-green-400">RSVP'd</span>}
                     {selectedPlayers.includes(member.id) && <span className="text-green-400">✓</span>}
                   </button>
