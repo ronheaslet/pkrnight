@@ -1,121 +1,63 @@
-import { useState } from 'react'
-import { useAuth } from '../../contexts/AuthContext'
+-- ============================================
+-- CUSTOM ROLES & PERMISSIONS SYSTEM
+-- ============================================
 
-export default function Header({ leagueName, onLeagueClick, hasMultipleLeagues, viewMode, onViewModeChange, userRoles = [] }) {
-  const { profile } = useAuth()
-  const [showModeMenu, setShowModeMenu] = useState(false)
-  
-  const initials = profile?.display_name
-    ?.split(' ')
-    .map(n => n[0])
-    .join('')
-    .toUpperCase()
-    .substring(0, 2) || 'U'
+-- Role definitions table
+CREATE TABLE IF NOT EXISTS league_roles (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    league_id UUID NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    
+    name VARCHAR(50) NOT NULL,
+    slug VARCHAR(50) NOT NULL,
+    description TEXT,
+    emoji VARCHAR(10),
+    
+    -- Role settings
+    max_assignees INTEGER DEFAULT NULL,  -- NULL = unlimited, 1 = single person
+    is_system_role BOOLEAN DEFAULT false, -- owner, admin, member are system roles
+    
+    -- Permissions (what this role can do)
+    can_pause_timer BOOLEAN DEFAULT false,
+    can_start_game BOOLEAN DEFAULT false,
+    can_manage_rebuys BOOLEAN DEFAULT false,
+    can_eliminate_players BOOLEAN DEFAULT false,
+    can_manage_money BOOLEAN DEFAULT false,
+    can_edit_settings BOOLEAN DEFAULT false,
+    can_manage_members BOOLEAN DEFAULT false,
+    can_send_announcements BOOLEAN DEFAULT false,
+    
+    display_order INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-  // Determine available modes based on roles
-  const isAdmin = userRoles.some(r => ['owner', 'admin'].includes(r.slug))
-  const isDealer = userRoles.some(r => r.slug === 'dealer' || r.can_pause_timer)
-  const hasSpecialRole = userRoles.some(r => !r.is_system_role)
+-- User role assignments
+CREATE TABLE IF NOT EXISTS member_role_assignments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    league_id UUID NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role_id UUID NOT NULL REFERENCES league_roles(id) ON DELETE CASCADE,
+    
+    assigned_at TIMESTAMPTZ DEFAULT NOW(),
+    assigned_by UUID REFERENCES users(id),
+    
+    UNIQUE(league_id, user_id, role_id)
+);
 
-  const viewModes = [
-    { id: 'player', label: 'Player', icon: '🎮', desc: 'Standard player view' },
-  ]
-  
-  if (isDealer) {
-    viewModes.push({ id: 'dealer', label: 'Dealer', icon: '🃏', desc: 'Timer & blinds only' })
-  }
-  
-  if (isAdmin) {
-    viewModes.push({ id: 'admin', label: 'Admin', icon: '⚙️', desc: 'Full admin controls' })
-  }
+-- Add view mode preference to users
+ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_view_mode VARCHAR(20) DEFAULT 'auto';
 
-  const currentMode = viewModes.find(m => m.id === viewMode) || viewModes[0]
+-- Disable RLS for new tables
+ALTER TABLE league_roles DISABLE ROW LEVEL SECURITY;
+ALTER TABLE member_role_assignments DISABLE ROW LEVEL SECURITY;
 
-  const getModeColor = (mode) => {
-    switch (mode) {
-      case 'admin': return 'bg-gold text-felt-dark'
-      case 'dealer': return 'bg-chip-blue text-white'
-      default: return 'bg-green-600 text-white'
-    }
-  }
-
-  return (
-    <header className="sticky top-0 z-40 bg-felt-dark/95 backdrop-blur-lg border-b border-white/10">
-      <div className="flex items-center justify-between px-4 py-3">
-        {/* League name */}
-        <button 
-          onClick={onLeagueClick}
-          className="flex items-center gap-2"
-        >
-          <span className="text-2xl">🃏</span>
-          <div>
-            <div className="font-display text-lg text-gold flex items-center gap-1">
-              {leagueName}
-              {hasMultipleLeagues && (
-                <span className="text-white/40 text-sm">▼</span>
-              )}
-            </div>
-          </div>
-        </button>
-
-        {/* Right side: View Mode Toggle + Avatar */}
-        <div className="flex items-center gap-3">
-          {/* View Mode Toggle */}
-          {viewModes.length > 1 && (
-            <div className="relative">
-              <button
-                onClick={() => setShowModeMenu(!showModeMenu)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium ${getModeColor(viewMode)}`}
-              >
-                <span>{currentMode.icon}</span>
-                <span className="hidden sm:inline">{currentMode.label}</span>
-                <span className="text-xs opacity-70">▼</span>
-              </button>
-
-              {showModeMenu && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowModeMenu(false)} />
-                  <div className="absolute right-0 top-full mt-2 w-48 bg-felt-dark border border-white/20 rounded-xl shadow-xl z-50 overflow-hidden">
-                    {viewModes.map(mode => (
-                      <button
-                        key={mode.id}
-                        onClick={() => {
-                          onViewModeChange(mode.id)
-                          setShowModeMenu(false)
-                        }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/10 transition-colors ${
-                          viewMode === mode.id ? 'bg-white/10' : ''
-                        }`}
-                      >
-                        <span className="text-xl">{mode.icon}</span>
-                        <div>
-                          <div className="font-medium text-sm">{mode.label}</div>
-                          <div className="text-xs text-white/50">{mode.desc}</div>
-                        </div>
-                        {viewMode === mode.id && (
-                          <span className="ml-auto text-green-400">✓</span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* User avatar with role indicator */}
-          <div className="relative">
-            <div className="w-9 h-9 rounded-full bg-gold flex items-center justify-center text-felt-dark font-semibold text-sm">
-              {initials}
-            </div>
-            {hasSpecialRole && (
-              <div className="absolute -bottom-1 -right-1 text-xs">
-                {userRoles.find(r => !r.is_system_role)?.emoji || '⭐'}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </header>
-  )
-}
+-- Insert default roles for existing leagues (run once per league or use a function)
+-- This is a template - the app will create these when a league is created
+/*
+INSERT INTO league_roles (league_id, name, slug, emoji, max_assignees, is_system_role, can_pause_timer, can_start_game, can_manage_rebuys, can_eliminate_players, can_manage_money, can_edit_settings, can_manage_members, display_order) VALUES
+(YOUR_LEAGUE_ID, 'Owner', 'owner', '👑', 1, true, true, true, true, true, true, true, true, 0),
+(YOUR_LEAGUE_ID, 'Admin', 'admin', '⭐', NULL, true, true, true, true, true, true, true, true, 1),
+(YOUR_LEAGUE_ID, 'Accountant', 'accountant', '📊', 1, false, false, false, false, false, true, false, false, 2),
+(YOUR_LEAGUE_ID, 'Sergeant at Arms', 'sergeant-at-arms', '🛡️', 1, false, true, true, true, true, false, false, false, 3),
+(YOUR_LEAGUE_ID, 'Dealer', 'dealer', '🃏', NULL, false, true, false, false, false, false, false, false, 4),
+(YOUR_LEAGUE_ID, 'Rebuy Handler', 'rebuy-handler', '🔄', NULL, false, false, false, true, false, false, false, false, 5);
+*/
