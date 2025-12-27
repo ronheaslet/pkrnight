@@ -3,8 +3,8 @@ import { useLeague } from '../../contexts/LeagueContext'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 
-// Default blind structure
-const DEFAULT_BLINDS = [
+// Fallback blind structure (used only if DB has no data)
+const FALLBACK_BLINDS = [
   { level: 1, sb: 25, bb: 50, ante: 0, duration: 15 },
   { level: 2, sb: 50, bb: 100, ante: 0, duration: 15 },
   { level: 3, sb: 75, bb: 150, ante: 0, duration: 15 },
@@ -39,6 +39,9 @@ export default function LiveGameTab() {
   const [selectedPlayer, setSelectedPlayer] = useState(null)
   const [rebuyRequests, setRebuyRequests] = useState([])
   
+  // Blind structure state - loaded from DB
+  const [blindStructure, setBlindStructure] = useState(FALLBACK_BLINDS)
+  
   // Timer state
   const [timeRemaining, setTimeRemaining] = useState(15 * 60)
   const [isRunning, setIsRunning] = useState(false)
@@ -67,15 +70,66 @@ export default function LiveGameTab() {
     voiceStyle: 'southern'
   })
 
-  // Fetch today's/upcoming events
+  // Fetch today's/upcoming events and blind structure
   useEffect(() => {
     if (currentLeague) {
       fetchEvents()
+      fetchBlindStructure()
       setBuyInAmount(currentLeague.default_buy_in || 20)
       setRebuyAmount(currentLeague.default_rebuy_cost || 20)
       setBountyAmount(currentLeague.bounty_amount || 5)
     }
   }, [currentLeague])
+
+  // Fetch blind structure from database
+  const fetchBlindStructure = async (structureId = null) => {
+    try {
+      // If no specific structureId, get the league's default
+      let targetStructureId = structureId
+      
+      if (!targetStructureId) {
+        const { data: structure } = await supabase
+          .from('blind_structures')
+          .select('id')
+          .eq('league_id', currentLeague.id)
+          .eq('is_default', true)
+          .single()
+        
+        targetStructureId = structure?.id
+      }
+      
+      if (!targetStructureId) {
+        console.log('No blind structure found, using fallback')
+        return FALLBACK_BLINDS
+      }
+      
+      const { data: levels, error } = await supabase
+        .from('blind_levels')
+        .select('*')
+        .eq('structure_id', targetStructureId)
+        .order('level_number', { ascending: true })
+      
+      if (error || !levels || levels.length === 0) {
+        console.log('No blind levels found, using fallback')
+        return FALLBACK_BLINDS
+      }
+      
+      // Transform DB format to component format
+      const blinds = levels.map(l => ({
+        level: l.level_number,
+        sb: l.small_blind,
+        bb: l.big_blind,
+        ante: l.ante || 0,
+        duration: l.duration_minutes
+      }))
+      
+      setBlindStructure(blinds)
+      return blinds
+    } catch (err) {
+      console.error('Error fetching blind structure:', err)
+      return FALLBACK_BLINDS
+    }
+  }
 
   const fetchEvents = async () => {
     const today = new Date().toISOString().split('T')[0]
@@ -113,7 +167,7 @@ export default function LiveGameTab() {
     if (session) {
       setGameSession(session)
       setCurrentLevel(session.current_level || 1)
-      setTimeRemaining(session.time_remaining_seconds || DEFAULT_BLINDS[0].duration * 60)
+      setTimeRemaining(session.time_remaining_seconds || blindStructure[0].duration * 60)
       setIsRunning(session.is_running || false)
       
       const { data: parts } = await supabase
@@ -130,7 +184,7 @@ export default function LiveGameTab() {
       setGameSession(null)
       setParticipants([])
       setCurrentLevel(1)
-      setTimeRemaining(DEFAULT_BLINDS[0].duration * 60)
+      setTimeRemaining(blindStructure[0].duration * 60)
       setIsRunning(false)
       setTotalRebuys(0)
     }
@@ -151,7 +205,7 @@ export default function LiveGameTab() {
             playSound('levelEnd')
             setWarningPlayed(false)
             advanceLevel()
-            return DEFAULT_BLINDS[currentLevel]?.duration * 60 || 15 * 60
+            return blindStructure[currentLevel]?.duration * 60 || 15 * 60
           }
           return t - 1
         })
@@ -251,7 +305,7 @@ export default function LiveGameTab() {
   }
 
   const advanceLevel = () => {
-    const newLevel = Math.min(currentLevel + 1, DEFAULT_BLINDS.length)
+    const newLevel = Math.min(currentLevel + 1, blindStructure.length)
     setCurrentLevel(newLevel)
     
     // Check if approaching rebuy cutoff
@@ -262,7 +316,7 @@ export default function LiveGameTab() {
 
   const rebuysAllowed = () => {
     if (rebuysCutoffType === 'halftime') {
-      return currentLevel <= Math.floor(DEFAULT_BLINDS.length / 2)
+      return currentLevel <= Math.floor(blindStructure.length / 2)
     }
     return currentLevel < rebuysCutoffLevel
   }
@@ -280,7 +334,7 @@ export default function LiveGameTab() {
       .insert({
         event_id: selectedEvent.id,
         current_level: 1,
-        time_remaining_seconds: DEFAULT_BLINDS[0].duration * 60,
+        time_remaining_seconds: blindStructure[0].duration * 60,
         is_running: false,
         started_at: new Date().toISOString()
       })
@@ -311,13 +365,13 @@ export default function LiveGameTab() {
   }
 
   const changeLevel = async (delta) => {
-    const newLevel = Math.max(1, Math.min(currentLevel + delta, DEFAULT_BLINDS.length))
+    const newLevel = Math.max(1, Math.min(currentLevel + delta, blindStructure.length))
     setCurrentLevel(newLevel)
-    setTimeRemaining(DEFAULT_BLINDS[newLevel - 1].duration * 60)
+    setTimeRemaining(blindStructure[newLevel - 1].duration * 60)
     setWarningPlayed(false)
     if (gameSession) {
       await supabase.from('game_sessions')
-        .update({ current_level: newLevel, time_remaining_seconds: DEFAULT_BLINDS[newLevel - 1].duration * 60 })
+        .update({ current_level: newLevel, time_remaining_seconds: blindStructure[newLevel - 1].duration * 60 })
         .eq('id', gameSession.id)
     }
   }
@@ -385,8 +439,8 @@ export default function LiveGameTab() {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
   }
 
-  const currentBlinds = DEFAULT_BLINDS[currentLevel - 1] || DEFAULT_BLINDS[0]
-  const nextBlinds = DEFAULT_BLINDS[currentLevel] || null
+  const currentBlinds = blindStructure[currentLevel - 1] || blindStructure[0]
+  const nextBlinds = blindStructure[currentLevel] || null
   const activePlayers = participants.filter(p => p.status === 'playing')
   const eliminatedPlayers = participants.filter(p => p.status === 'eliminated').sort((a, b) => a.finish_position - b.finish_position)
   const winner = participants.find(p => p.status === 'winner')
@@ -394,7 +448,7 @@ export default function LiveGameTab() {
   const prizePool = (buyInAmount * participants.length) + (rebuyAmount * totalRebuys)
   const bountyPool = bountyAmount * participants.length
   const avgStack = activePlayers.length > 0 ? Math.round((startingChips * participants.length + startingChips * totalRebuys) / activePlayers.length) : 0
-  const progressPercent = ((DEFAULT_BLINDS[currentLevel - 1]?.duration * 60 - timeRemaining) / (DEFAULT_BLINDS[currentLevel - 1]?.duration * 60)) * 100
+  const progressPercent = ((blindStructure[currentLevel - 1]?.duration * 60 - timeRemaining) / (blindStructure[currentLevel - 1]?.duration * 60)) * 100
 
   if (loading) return <div className="px-4 py-8 text-center text-white/50">Loading...</div>
 
@@ -528,7 +582,7 @@ export default function LiveGameTab() {
 
           {/* Timer display */}
           <div className={`card text-center mb-4 ${timeRemaining <= 60 ? 'border-2 border-red-500' : 'card-gold'}`}>
-            <div className="text-white/60 text-sm mb-1">Level {currentLevel} of {DEFAULT_BLINDS.length}</div>
+            <div className="text-white/60 text-sm mb-1">Level {currentLevel} of {blindStructure.length}</div>
             <div className={`font-display text-6xl mb-2 tracking-wider ${timeRemaining <= 60 ? 'text-red-500 animate-pulse' : 'text-white'}`}>
               {formatTime(timeRemaining)}
             </div>
@@ -560,7 +614,7 @@ export default function LiveGameTab() {
                     {isRunning ? '⏸ Pause' : '▶ Start'}
                   </button>
                   <button onClick={() => addTime(60)} className="btn btn-secondary py-2 px-3">+1m</button>
-                  <button onClick={() => changeLevel(1)} className="btn btn-secondary py-2 px-3" disabled={currentLevel >= DEFAULT_BLINDS.length}>Next ▶</button>
+                  <button onClick={() => changeLevel(1)} className="btn btn-secondary py-2 px-3" disabled={currentLevel >= blindStructure.length}>Next ▶</button>
                 </div>
               </div>
             )}
