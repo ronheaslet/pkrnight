@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useLeague } from '../../contexts/LeagueContext'
 import { supabase } from '../../lib/supabase'
 
-const DEFAULT_BLINDS = [
+// Fallback blind structure (used only if DB has no data)
+const FALLBACK_BLINDS = [
   { level: 1, sb: 25, bb: 50, ante: 0, duration: 15 },
   { level: 2, sb: 50, bb: 100, ante: 0, duration: 15 },
   { level: 3, sb: 75, bb: 150, ante: 0, duration: 15 },
@@ -24,6 +25,7 @@ export default function DealerScreen({ canPauseTimer = true }) {
   const { currentLeague } = useLeague()
   const [gameSession, setGameSession] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [blindStructure, setBlindStructure] = useState(FALLBACK_BLINDS)
   
   const [timeRemaining, setTimeRemaining] = useState(15 * 60)
   const [isRunning, setIsRunning] = useState(false)
@@ -32,6 +34,7 @@ export default function DealerScreen({ canPauseTimer = true }) {
 
   useEffect(() => {
     if (currentLeague) {
+      fetchBlindStructure()
       fetchActiveGame()
       subscribeToGame()
     }
@@ -40,6 +43,38 @@ export default function DealerScreen({ canPauseTimer = true }) {
       clearInterval(timerRef.current)
     }
   }, [currentLeague])
+
+  // Fetch blind structure from database
+  const fetchBlindStructure = async () => {
+    try {
+      const { data: structure } = await supabase
+        .from('blind_structures')
+        .select('id')
+        .eq('league_id', currentLeague.id)
+        .eq('is_default', true)
+        .single()
+      
+      if (!structure?.id) return
+      
+      const { data: levels } = await supabase
+        .from('blind_levels')
+        .select('*')
+        .eq('structure_id', structure.id)
+        .order('level_number', { ascending: true })
+      
+      if (levels && levels.length > 0) {
+        setBlindStructure(levels.map(l => ({
+          level: l.level_number,
+          sb: l.small_blind,
+          bb: l.big_blind,
+          ante: l.ante || 0,
+          duration: l.duration_minutes
+        })))
+      }
+    } catch (err) {
+      console.error('Error fetching blind structure:', err)
+    }
+  }
 
   const fetchActiveGame = async () => {
     const today = new Date().toISOString().split('T')[0]
@@ -63,7 +98,7 @@ export default function DealerScreen({ canPauseTimer = true }) {
     if (session && !session.ended_at) {
       setGameSession(session)
       setCurrentLevel(session.current_level || 1)
-      setTimeRemaining(session.time_remaining_seconds || DEFAULT_BLINDS[0].duration * 60)
+      setTimeRemaining(session.time_remaining_seconds || blindStructure[0].duration * 60)
       setIsRunning(session.is_running || false)
     }
     setLoading(false)
@@ -93,7 +128,7 @@ export default function DealerScreen({ canPauseTimer = true }) {
         setTimeRemaining(t => {
           if (t <= 1) {
             playSound()
-            return DEFAULT_BLINDS[currentLevel]?.duration * 60 || 15 * 60
+            return blindStructure[currentLevel]?.duration * 60 || 15 * 60
           }
           return t - 1
         })
@@ -140,8 +175,8 @@ export default function DealerScreen({ canPauseTimer = true }) {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
   }
 
-  const currentBlinds = DEFAULT_BLINDS[currentLevel - 1] || DEFAULT_BLINDS[0]
-  const nextBlinds = DEFAULT_BLINDS[currentLevel] || null
+  const currentBlinds = blindStructure[currentLevel - 1] || blindStructure[0]
+  const nextBlinds = blindStructure[currentLevel] || null
 
   if (loading) {
     return (
