@@ -460,15 +460,24 @@ function SettingsModal({ league, onClose, onSave }) {
 }
 
 // ============================================
-// MEMBERS MODAL
+// MEMBERS MODAL (IMPROVED)
 // ============================================
 function MembersModal({ league, members, roles, roleAssignments, onClose, onUpdate }) {
+  const [activeTab, setActiveTab] = useState('all')
   const [selectedMember, setSelectedMember] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
 
   const getInitials = (name) => {
     if (!name) return '?'
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+  }
+
+  const getMemberRoles = (userId) => {
+    return roleAssignments
+      .filter(a => a.user_id === userId)
+      .map(a => roles.find(r => r.id === a.role_id))
+      .filter(Boolean)
   }
 
   const updateMemberType = async (memberId, newType) => {
@@ -491,53 +500,246 @@ function MembersModal({ league, members, roles, roleAssignments, onClose, onUpda
     setSaving(false)
   }
 
+  const removeMember = async (memberId) => {
+    if (!confirm('Remove this member from the league?')) return
+    setSaving(true)
+    await supabase
+      .from('league_members')
+      .update({ status: 'inactive' })
+      .eq('id', memberId)
+    onUpdate()
+    setSaving(false)
+  }
+
+  // Filter members based on active tab and search
+  const filteredMembers = members.filter(m => {
+    if (m.status !== 'active') return false
+    
+    // Search filter
+    const name = (m.users?.full_name || m.users?.display_name || '').toLowerCase()
+    if (searchTerm && !name.includes(searchTerm.toLowerCase())) return false
+    
+    // Tab filter
+    switch (activeTab) {
+      case 'paid': return m.member_type === 'paid'
+      case 'guests': return m.member_type === 'guest'
+      case 'admins': return m.role === 'owner' || m.role === 'admin'
+      default: return true
+    }
+  })
+
+  const tabs = [
+    { id: 'all', label: 'All', count: members.filter(m => m.status === 'active').length },
+    { id: 'paid', label: 'Paid', count: members.filter(m => m.status === 'active' && m.member_type === 'paid').length },
+    { id: 'guests', label: 'Guests', count: members.filter(m => m.status === 'active' && m.member_type === 'guest').length },
+    { id: 'admins', label: 'Admins', count: members.filter(m => m.status === 'active' && (m.role === 'owner' || m.role === 'admin')).length },
+  ]
+
+  const getRoleBadgeColor = (role) => {
+    switch (role) {
+      case 'owner': return 'bg-gold text-felt-dark'
+      case 'admin': return 'bg-chip-blue text-white'
+      default: return 'bg-white/20 text-white/70'
+    }
+  }
+
+  const getTypeBadgeColor = (type) => {
+    return type === 'paid' ? 'bg-green-600/30 text-green-400 border-green-500' : 'bg-gray-500/30 text-gray-300 border-gray-500'
+  }
+
   return (
     <Modal title="👥 Manage Members" onClose={onClose}>
-      <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-        {members.map(member => (
-          <div key={member.id} className="card flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-full ${member.member_type === 'paid' ? 'bg-green-600' : 'bg-gray-500'} flex items-center justify-center text-sm font-semibold`}>
-              {getInitials(member.users?.display_name || member.users?.full_name)}
-            </div>
-            <div className="flex-1">
-              <div className="font-medium text-sm">{member.users?.display_name || member.users?.full_name}</div>
-              <div className="text-xs text-white/50">{member.users?.email}</div>
-            </div>
-            <div className="flex gap-2">
-              <select
-                value={member.member_type || 'guest'}
-                onChange={(e) => updateMemberType(member.id, e.target.value)}
-                className="input py-1 px-2 text-xs"
-                disabled={saving}
-              >
-                <option value="guest">Guest</option>
-                <option value="paid">Paid</option>
-              </select>
-              {member.role !== 'owner' && (
-                <select
-                  value={member.role}
-                  onChange={(e) => updateMemberRole(member.id, e.target.value)}
-                  className="input py-1 px-2 text-xs"
-                  disabled={saving}
-                >
-                  <option value="member">Member</option>
-                  <option value="admin">Admin</option>
-                </select>
-              )}
-            </div>
-          </div>
-        ))}
+      <div className="space-y-4">
+        {/* Search */}
+        <input
+          type="text"
+          placeholder="Search members..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="input"
+        />
+
+        {/* Tabs */}
+        <div className="flex gap-1 bg-white/5 rounded-lg p-1">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 py-2 px-2 rounded-md text-xs font-medium transition-colors ${
+                activeTab === tab.id 
+                  ? 'bg-gold text-felt-dark' 
+                  : 'text-white/60 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              {tab.label} ({tab.count})
+            </button>
+          ))}
+        </div>
+
+        {/* Members list */}
+        <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+          {filteredMembers.length === 0 ? (
+            <div className="text-center py-8 text-white/50">No members found</div>
+          ) : (
+            filteredMembers.map(member => (
+              <div key={member.id} className="card">
+                <div className="flex items-start gap-3">
+                  {/* Avatar */}
+                  <div className={`w-12 h-12 rounded-full ${member.member_type === 'paid' ? 'bg-green-600' : 'bg-gray-500'} flex items-center justify-center text-sm font-semibold flex-shrink-0`}>
+                    {getInitials(member.users?.display_name || member.users?.full_name)}
+                  </div>
+                  
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-white">
+                      {member.users?.full_name || member.users?.display_name || 'Unknown'}
+                    </div>
+                    {member.users?.display_name && member.users?.full_name && member.users?.display_name !== member.users?.full_name && (
+                      <div className="text-xs text-white/50">"{member.users?.display_name}"</div>
+                    )}
+                    <div className="text-xs text-white/40 truncate">{member.users?.email}</div>
+                    
+                    {/* Badges */}
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {/* System role badge */}
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${getRoleBadgeColor(member.role)}`}>
+                        {member.role === 'owner' ? '👑 Owner' : member.role === 'admin' ? '⭐ Admin' : 'Member'}
+                      </span>
+                      
+                      {/* Member type badge */}
+                      <span className={`px-2 py-0.5 rounded text-xs border ${getTypeBadgeColor(member.member_type)}`}>
+                        {member.member_type === 'paid' ? '✓ Paid' : 'Guest'}
+                      </span>
+                      
+                      {/* Special roles */}
+                      {getMemberRoles(member.user_id).map(role => (
+                        <span key={role.id} className="px-2 py-0.5 rounded text-xs bg-purple-600/30 text-purple-300 border border-purple-500">
+                          {role.emoji} {role.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <button
+                    onClick={() => setSelectedMember(selectedMember?.id === member.id ? null : member)}
+                    className="text-white/40 hover:text-white p-1"
+                  >
+                    ⚙️
+                  </button>
+                </div>
+
+                {/* Expanded edit section */}
+                {selectedMember?.id === member.id && (
+                  <div className="mt-4 pt-4 border-t border-white/10 space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-white/50 mb-1">Member Type</label>
+                        <select
+                          value={member.member_type || 'guest'}
+                          onChange={(e) => updateMemberType(member.id, e.target.value)}
+                          className="input text-sm"
+                          disabled={saving}
+                        >
+                          <option value="guest">Guest</option>
+                          <option value="paid">Paid Member</option>
+                        </select>
+                      </div>
+                      
+                      {member.role !== 'owner' && (
+                        <div>
+                          <label className="block text-xs text-white/50 mb-1">System Role</label>
+                          <select
+                            value={member.role}
+                            onChange={(e) => updateMemberRole(member.id, e.target.value)}
+                            className="input text-sm"
+                            disabled={saving}
+                          >
+                            <option value="member">Member</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Special roles */}
+                    <div>
+                      <label className="block text-xs text-white/50 mb-2">Special Roles</label>
+                      <div className="flex flex-wrap gap-2">
+                        {roles.filter(r => !r.is_system_role).map(role => {
+                          const isAssigned = roleAssignments.some(a => a.role_id === role.id && a.user_id === member.user_id)
+                          return (
+                            <button
+                              key={role.id}
+                              onClick={async () => {
+                                setSaving(true)
+                                if (isAssigned) {
+                                  const assignment = roleAssignments.find(a => a.role_id === role.id && a.user_id === member.user_id)
+                                  await supabase.from('member_role_assignments').delete().eq('id', assignment.id)
+                                } else {
+                                  await supabase.from('member_role_assignments').insert({
+                                    league_id: league.id,
+                                    role_id: role.id,
+                                    user_id: member.user_id
+                                  })
+                                }
+                                onUpdate()
+                                setSaving(false)
+                              }}
+                              disabled={saving}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                                isAssigned 
+                                  ? 'bg-purple-600 text-white' 
+                                  : 'bg-white/10 text-white/60 hover:bg-white/20'
+                              }`}
+                            >
+                              {role.emoji} {role.name} {isAssigned && '✓'}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {member.role !== 'owner' && (
+                      <button
+                        onClick={() => removeMember(member.id)}
+                        disabled={saving}
+                        className="text-red-400 text-xs hover:text-red-300"
+                      >
+                        Remove from league
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </Modal>
   )
 }
 
 // ============================================
-// ROLES MODAL
+// ROLES MODAL (IMPROVED - with create new role)
 // ============================================
 function RolesModal({ league, roles, members, roleAssignments, onClose, onUpdate }) {
   const [selectedRole, setSelectedRole] = useState(null)
+  const [showCreateRole, setShowCreateRole] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [newRole, setNewRole] = useState({
+    name: '',
+    emoji: '🎯',
+    description: '',
+    max_assignees: null,
+    can_pause_timer: false,
+    can_start_game: false,
+    can_manage_rebuys: false,
+    can_eliminate_players: false,
+    can_manage_money: false,
+  })
+
+  const emojiOptions = ['🎯', '🛡️', '📊', '🃏', '🔄', '💼', '🎪', '🔔', '📣', '🎖️', '⚡', '🔧', '📝', '🎬', '🏅']
 
   const getInitials = (name) => {
     if (!name) return '?'
@@ -567,39 +769,251 @@ function RolesModal({ league, roles, members, roleAssignments, onClose, onUpdate
     setSaving(false)
   }
 
+  const createNewRole = async () => {
+    if (!newRole.name.trim()) return
+    
+    setSaving(true)
+    
+    const maxOrder = Math.max(...roles.map(r => r.display_order || 0), 0)
+    
+    await supabase.from('league_roles').insert({
+      league_id: league.id,
+      name: newRole.name.trim(),
+      slug: newRole.name.trim().toLowerCase().replace(/\s+/g, '-'),
+      emoji: newRole.emoji,
+      description: newRole.description,
+      max_assignees: newRole.max_assignees || null,
+      is_system_role: false,
+      can_pause_timer: newRole.can_pause_timer,
+      can_start_game: newRole.can_start_game,
+      can_manage_rebuys: newRole.can_manage_rebuys,
+      can_eliminate_players: newRole.can_eliminate_players,
+      can_manage_money: newRole.can_manage_money,
+      can_edit_settings: false,
+      can_manage_members: false,
+      display_order: maxOrder + 1
+    })
+
+    setNewRole({
+      name: '',
+      emoji: '🎯',
+      description: '',
+      max_assignees: null,
+      can_pause_timer: false,
+      can_start_game: false,
+      can_manage_rebuys: false,
+      can_eliminate_players: false,
+      can_manage_money: false,
+    })
+    setShowCreateRole(false)
+    onUpdate()
+    setSaving(false)
+  }
+
+  const deleteRole = async (roleId) => {
+    if (!confirm('Delete this role? All assignments will be removed.')) return
+    
+    setSaving(true)
+    await supabase.from('member_role_assignments').delete().eq('role_id', roleId)
+    await supabase.from('league_roles').delete().eq('id', roleId)
+    onUpdate()
+    setSaving(false)
+  }
+
   const customRoles = roles.filter(r => !r.is_system_role)
 
   return (
     <Modal title="🎭 Roles & Permissions" onClose={onClose}>
       <div className="space-y-4">
-        {customRoles.map(role => (
-          <div key={role.id} className="card">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-xl">{role.emoji}</span>
-              <span className="font-semibold">{role.name}</span>
-              {role.max_assignees && <span className="text-xs text-white/50">(max {role.max_assignees})</span>}
+        {/* System roles info */}
+        <div className="bg-white/5 rounded-lg p-3">
+          <div className="text-xs text-white/50 mb-2">System Roles (assigned in Members)</div>
+          <div className="flex gap-2">
+            <span className="px-2 py-1 rounded text-xs bg-gold text-felt-dark font-medium">👑 Owner</span>
+            <span className="px-2 py-1 rounded text-xs bg-chip-blue text-white font-medium">⭐ Admin</span>
+            <span className="px-2 py-1 rounded text-xs bg-white/20 text-white/70 font-medium">Member</span>
+          </div>
+        </div>
+
+        {/* Custom roles */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm font-semibold">Custom Roles</div>
+            <button
+              onClick={() => setShowCreateRole(!showCreateRole)}
+              className="text-gold text-sm hover:text-gold/80"
+            >
+              {showCreateRole ? '✕ Cancel' : '+ Add Role'}
+            </button>
+          </div>
+
+          {/* Create new role form */}
+          {showCreateRole && (
+            <div className="card mb-4 border border-gold/30">
+              <div className="text-sm font-semibold text-gold mb-3">Create New Role</div>
+              
+              <div className="space-y-3">
+                <div className="flex gap-3">
+                  {/* Emoji selector */}
+                  <div>
+                    <label className="block text-xs text-white/50 mb-1">Icon</label>
+                    <div className="flex flex-wrap gap-1 max-w-[150px]">
+                      {emojiOptions.map(emoji => (
+                        <button
+                          key={emoji}
+                          onClick={() => setNewRole({ ...newRole, emoji })}
+                          className={`w-8 h-8 rounded flex items-center justify-center text-lg ${
+                            newRole.emoji === emoji ? 'bg-gold/30 ring-2 ring-gold' : 'bg-white/10 hover:bg-white/20'
+                          }`}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Name and description */}
+                  <div className="flex-1 space-y-2">
+                    <div>
+                      <label className="block text-xs text-white/50 mb-1">Role Name</label>
+                      <input
+                        type="text"
+                        value={newRole.name}
+                        onChange={(e) => setNewRole({ ...newRole, name: e.target.value })}
+                        className="input"
+                        placeholder="e.g., Chip Runner"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-white/50 mb-1">Description (optional)</label>
+                      <input
+                        type="text"
+                        value={newRole.description}
+                        onChange={(e) => setNewRole({ ...newRole, description: e.target.value })}
+                        className="input"
+                        placeholder="What does this role do?"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Permissions */}
+                <div>
+                  <label className="block text-xs text-white/50 mb-2">Permissions</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { key: 'can_pause_timer', label: '⏱️ Pause Timer' },
+                      { key: 'can_start_game', label: '▶️ Start Game' },
+                      { key: 'can_manage_rebuys', label: '🔄 Manage Rebuys' },
+                      { key: 'can_eliminate_players', label: '💀 Eliminate Players' },
+                      { key: 'can_manage_money', label: '💰 Manage Money' },
+                    ].map(perm => (
+                      <label key={perm.key} className="flex items-center gap-2 text-xs cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={newRole[perm.key]}
+                          onChange={(e) => setNewRole({ ...newRole, [perm.key]: e.target.checked })}
+                          className="w-4 h-4 rounded"
+                        />
+                        {perm.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  onClick={createNewRole}
+                  disabled={saving || !newRole.name.trim()}
+                  className="w-full btn btn-primary py-2 disabled:opacity-50"
+                >
+                  {saving ? 'Creating...' : 'Create Role'}
+                </button>
+              </div>
             </div>
-            <div className="text-xs text-white/50 mb-3">{role.description}</div>
-            <div className="flex flex-wrap gap-2">
-              {members.filter(m => m.status === 'active').map(member => {
-                const isAssigned = roleAssignments.some(a => a.role_id === role.id && a.user_id === member.user_id)
+          )}
+
+          {/* List of custom roles */}
+          {customRoles.length === 0 ? (
+            <div className="text-center py-6 text-white/50 text-sm">
+              No custom roles yet. Create one above!
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {customRoles.map(role => {
+                const assignees = getRoleAssignees(role.id)
+                const isExpanded = selectedRole === role.id
+                
                 return (
-                  <button
-                    key={member.id}
-                    onClick={() => toggleRoleAssignment(role.id, member.user_id)}
-                    disabled={saving}
-                    className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs transition-colors ${
-                      isAssigned ? 'bg-gold text-felt-dark' : 'bg-white/10 text-white/70 hover:bg-white/20'
-                    }`}
-                  >
-                    {getInitials(member.users?.display_name || member.users?.full_name)}
-                    {isAssigned && ' ✓'}
-                  </button>
+                  <div key={role.id} className="card">
+                    <div 
+                      className="flex items-center gap-3 cursor-pointer"
+                      onClick={() => setSelectedRole(isExpanded ? null : role.id)}
+                    >
+                      <span className="text-2xl">{role.emoji}</span>
+                      <div className="flex-1">
+                        <div className="font-semibold">{role.name}</div>
+                        {role.description && (
+                          <div className="text-xs text-white/50">{role.description}</div>
+                        )}
+                        <div className="text-xs text-white/40 mt-1">
+                          {assignees.length === 0 
+                            ? 'No one assigned' 
+                            : assignees.map(a => a.users?.full_name || a.users?.display_name).join(', ')
+                          }
+                        </div>
+                      </div>
+                      <span className="text-white/40">{isExpanded ? '▲' : '▼'}</span>
+                    </div>
+
+                    {/* Expanded section */}
+                    {isExpanded && (
+                      <div className="mt-4 pt-4 border-t border-white/10">
+                        {/* Permissions display */}
+                        <div className="flex flex-wrap gap-1 mb-3">
+                          {role.can_pause_timer && <span className="text-xs bg-white/10 px-2 py-0.5 rounded">⏱️ Timer</span>}
+                          {role.can_start_game && <span className="text-xs bg-white/10 px-2 py-0.5 rounded">▶️ Start</span>}
+                          {role.can_manage_rebuys && <span className="text-xs bg-white/10 px-2 py-0.5 rounded">🔄 Rebuys</span>}
+                          {role.can_eliminate_players && <span className="text-xs bg-white/10 px-2 py-0.5 rounded">💀 Eliminate</span>}
+                          {role.can_manage_money && <span className="text-xs bg-white/10 px-2 py-0.5 rounded">💰 Money</span>}
+                        </div>
+
+                        {/* Assign members */}
+                        <div className="text-xs text-white/50 mb-2">Assign to members:</div>
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {members.filter(m => m.status === 'active').map(member => {
+                            const isAssigned = roleAssignments.some(a => a.role_id === role.id && a.user_id === member.user_id)
+                            return (
+                              <button
+                                key={member.id}
+                                onClick={() => toggleRoleAssignment(role.id, member.user_id)}
+                                disabled={saving}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                                  isAssigned ? 'bg-gold text-felt-dark' : 'bg-white/10 text-white/70 hover:bg-white/20'
+                                }`}
+                              >
+                                <span>{member.users?.full_name || member.users?.display_name}</span>
+                                {isAssigned && <span>✓</span>}
+                              </button>
+                            )
+                          })}
+                        </div>
+
+                        {/* Delete role */}
+                        <button
+                          onClick={() => deleteRole(role.id)}
+                          disabled={saving}
+                          className="text-red-400 text-xs hover:text-red-300"
+                        >
+                          Delete this role
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )
               })}
             </div>
-          </div>
-        ))}
+          )}
+        </div>
       </div>
     </Modal>
   )
