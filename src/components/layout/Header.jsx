@@ -205,6 +205,23 @@ export default function Header({ leagueName, onLeagueClick, hasMultipleLeagues, 
                         </div>
                       </button>
 
+                      {/* Super Admin Link - only visible to super admins */}
+                      {profile?.is_super_admin && (
+                        <button
+                          onClick={() => {
+                            setShowUserMenu(false)
+                            navigate('/super-admin')
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-purple-500/20 transition-colors"
+                        >
+                          <span className="text-lg">🛡️</span>
+                          <div>
+                            <div className="font-medium text-sm text-purple-400">Super Admin</div>
+                            <div className="text-xs text-white/50">Manage all users</div>
+                          </div>
+                        </button>
+                      )}
+
                       <div className="border-t border-white/10 my-1"></div>
 
                       <button
