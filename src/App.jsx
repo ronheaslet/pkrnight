@@ -9,6 +9,7 @@ import Register from './pages/Register'
 import JoinLeague from './pages/JoinLeague'
 import CreateLeague from './pages/CreateLeague'
 import Dashboard from './pages/Dashboard'
+import SuperAdminPanel from './pages/SuperAdminPanel'
 
 // Loading spinner
 function LoadingScreen() {
@@ -116,6 +117,13 @@ function App() {
       <Route path="/create" element={
         <ProtectedRoute>
           <CreateLeague />
+        </ProtectedRoute>
+      } />
+
+      {/* Super Admin (requires auth, checks is_super_admin internally) */}
+      <Route path="/super-admin" element={
+        <ProtectedRoute>
+          <SuperAdminPanel />
         </ProtectedRoute>
       } />
 
