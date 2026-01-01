@@ -16,15 +16,48 @@ export default function MessagesTab() {
   const [members, setMembers] = useState({})
 
   useEffect(() => {
+    let channel = null
+    
     if (currentLeague) {
       fetchMessages()
       fetchNotifications()
       fetchMembers()
-      subscribeToMessages()
+      
+      channel = supabase
+        .channel(`chat-messages-${currentLeague.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'chat_messages',
+            filter: `league_id=eq.${currentLeague.id}`
+          },
+          async (payload) => {
+            const { data } = await supabase
+              .from('chat_messages')
+              .select(`
+                id,
+                message,
+                created_at,
+                user_id,
+                users (id, full_name, display_name)
+              `)
+              .eq('id', payload.new.id)
+              .single()
+            
+            if (data) {
+              setMessages(prev => [...prev, data])
+            }
+          }
+        )
+        .subscribe()
     }
 
     return () => {
-      supabase.removeAllChannels()
+      if (channel) {
+        supabase.removeChannel(channel)
+      }
     }
   }, [currentLeague])
 
@@ -163,43 +196,6 @@ export default function MessagesTab() {
     // Sort by time
     notifs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
     setNotifications(notifs.slice(0, 10))
-  }
-
-  const subscribeToMessages = () => {
-    const channel = supabase
-      .channel('chat-messages')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'chat_messages',
-          filter: `league_id=eq.${currentLeague.id}`
-        },
-        async (payload) => {
-          // Fetch the full message with user data
-          const { data } = await supabase
-            .from('chat_messages')
-            .select(`
-              id,
-              message,
-              created_at,
-              user_id,
-              users (id, full_name, display_name)
-            `)
-            .eq('id', payload.new.id)
-            .single()
-          
-          if (data) {
-            setMessages(prev => [...prev, data])
-          }
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
   }
 
   const scrollToBottom = () => {
