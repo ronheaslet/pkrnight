@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useLeague } from '../contexts/LeagueContext'
 import { supabase } from '../lib/supabase'
@@ -18,7 +19,8 @@ import TabBar from '../components/layout/TabBar'
 import LeagueSwitcher from '../components/common/LeagueSwitcher'
 
 export default function Dashboard() {
-  const { user, profile } = useAuth()
+  const navigate = useNavigate()
+  const { user, profile, signOut } = useAuth()
   const { currentLeague, leagues, isAdmin } = useLeague()
   
   const [activeTab, setActiveTab] = useState('calendar')
@@ -96,6 +98,15 @@ export default function Dashboard() {
     }
   }
 
+  const handleLogout = async () => {
+    try {
+      await signOut()
+      navigate('/login')
+    } catch (err) {
+      console.error('Logout error:', err)
+    }
+  }
+
   // Check if user can perform actions based on roles
   const canPauseTimer = userRoles.some(r => r.can_pause_timer) || isAdmin
 
@@ -124,12 +135,40 @@ export default function Dashboard() {
     }
   }
 
+  // No league selected - show helpful screen with logout option
   if (!currentLeague) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <div className="text-center mb-8">
           <div className="text-4xl mb-4">🃏</div>
-          <div className="text-white/60">No league selected</div>
+          <div className="text-white/60 mb-2">No league selected</div>
+          <p className="text-white/40 text-sm mb-6">
+            {leagues.length === 0 
+              ? "You're not a member of any leagues yet."
+              : "Unable to load league. Please try again."}
+          </p>
+        </div>
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+          <button
+            onClick={() => navigate('/join')}
+            className="btn btn-primary py-3"
+          >
+            {leagues.length === 0 ? 'Join a League' : 'Select League'}
+          </button>
+          {profile?.is_super_admin && (
+            <button
+              onClick={() => navigate('/super-admin')}
+              className="btn bg-purple-600 hover:bg-purple-500 text-white py-3"
+            >
+              🛡️ Super Admin Panel
+            </button>
+          )}
+          <button
+            onClick={handleLogout}
+            className="btn btn-secondary py-3 text-red-400"
+          >
+            Log Out
+          </button>
         </div>
       </div>
     )
