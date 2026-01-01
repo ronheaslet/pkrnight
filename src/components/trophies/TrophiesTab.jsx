@@ -104,7 +104,9 @@ export default function TrophiesTab() {
   const calculateYearlyStats = (results, members) => {
     const byYear = {}
     results.forEach(r => {
-      const year = new Date(r.game_sessions?.events?.event_date).getFullYear()
+      const eventDate = r.game_sessions?.events?.event_date
+      if (!eventDate) return
+      const year = new Date(eventDate + 'T00:00').getFullYear()
       if (!byYear[year]) byYear[year] = []
       byYear[year].push(r)
     })
