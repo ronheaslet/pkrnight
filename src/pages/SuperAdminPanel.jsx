@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useLeague } from '../contexts/LeagueContext'
 import { supabase } from '../lib/supabase'
 
 export default function SuperAdminPanel() {
   const { profile, signOut } = useAuth()
+  const { leagues } = useLeague()
   const navigate = useNavigate()
   
   const [users, setUsers] = useState([])
-  const [leagues, setLeagues] = useState([])
+  const [allLeagues, setAllLeagues] = useState([])
   const [memberships, setMemberships] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -21,9 +23,14 @@ export default function SuperAdminPanel() {
   // Check if super admin
   useEffect(() => {
     if (profile && !profile.is_super_admin) {
-      navigate('/app')
+      // If user has leagues, go to app, otherwise go to join
+      if (leagues.length > 0) {
+        navigate('/app')
+      } else {
+        navigate('/join')
+      }
     }
-  }, [profile, navigate])
+  }, [profile, leagues, navigate])
 
   useEffect(() => {
     if (profile?.is_super_admin) {
@@ -55,7 +62,7 @@ export default function SuperAdminPanel() {
     if (leaguesError) {
       console.error('Error fetching leagues:', leaguesError)
     } else {
-      setLeagues(leaguesData || [])
+      setAllLeagues(leaguesData || [])
     }
 
     // Fetch all memberships
@@ -75,7 +82,7 @@ export default function SuperAdminPanel() {
   const getUserLeagues = (userId) => {
     const userMemberships = memberships.filter(m => m.user_id === userId)
     return userMemberships.map(m => {
-      const league = leagues.find(l => l.id === m.league_id)
+      const league = allLeagues.find(l => l.id === m.league_id)
       return { ...m, league }
     }).filter(m => m.league)
   }
@@ -150,6 +157,23 @@ export default function SuperAdminPanel() {
     }
   }
 
+  const handleLogout = async () => {
+    try {
+      await signOut()
+      navigate('/login')
+    } catch (err) {
+      console.error('Logout error:', err)
+    }
+  }
+
+  const handleBack = () => {
+    if (leagues.length > 0) {
+      navigate('/app')
+    } else {
+      navigate('/join')
+    }
+  }
+
   const filteredUsers = users.filter(user => {
     const query = searchQuery.toLowerCase()
     return (
@@ -172,12 +196,28 @@ export default function SuperAdminPanel() {
     }
   }
 
+  // Access denied screen with logout option
   if (!profile?.is_super_admin) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-felt-dark">
-        <div className="text-center">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-felt-dark p-4">
+        <div className="text-center mb-8">
           <div className="text-4xl mb-4">🔒</div>
-          <div className="text-white/60">Access Denied</div>
+          <div className="text-white/60 mb-4">Access Denied</div>
+          <p className="text-white/40 text-sm mb-6">You don't have super admin privileges.</p>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={handleBack}
+            className="btn btn-secondary px-6 py-2"
+          >
+            ← Go Back
+          </button>
+          <button
+            onClick={handleLogout}
+            className="btn bg-red-600 hover:bg-red-500 text-white px-6 py-2"
+          >
+            Log Out
+          </button>
         </div>
       </div>
     )
@@ -190,7 +230,7 @@ export default function SuperAdminPanel() {
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
             <button 
-              onClick={() => navigate('/app')}
+              onClick={handleBack}
               className="text-white/60 hover:text-white"
             >
               ← Back
@@ -200,39 +240,55 @@ export default function SuperAdminPanel() {
               <span className="font-display text-lg text-gold">Super Admin</span>
             </div>
           </div>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="btn btn-primary text-sm"
-          >
-            + Add User to League
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="btn btn-primary text-sm"
+            >
+              + Add User to League
+            </button>
+            <button
+              onClick={handleLogout}
+              className="text-red-400 hover:text-red-300 text-sm px-3 py-1"
+            >
+              Log Out
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Message */}
       {message && (
         <div className={`mx-4 mt-4 p-3 rounded-lg text-sm ${
-          message.type === 'success' 
-            ? 'bg-green-500/20 border border-green-500 text-green-400'
-            : 'bg-red-500/20 border border-red-500 text-red-400'
+          message.type === 'error' 
+            ? 'bg-red-500/20 border border-red-500 text-red-400' 
+            : 'bg-green-500/20 border border-green-500 text-green-400'
         }`}>
           {message.text}
+          <button 
+            onClick={() => setMessage(null)}
+            className="float-right opacity-60 hover:opacity-100"
+          >
+            ×
+          </button>
         </div>
       )}
 
-      {/* Stats Bar */}
-      <div className="p-4 grid grid-cols-3 gap-3">
-        <div className="card text-center">
-          <div className="text-2xl font-display text-gold">{users.length}</div>
-          <div className="text-xs text-white/50">Total Users</div>
-        </div>
-        <div className="card text-center">
-          <div className="text-2xl font-display text-gold">{leagues.length}</div>
-          <div className="text-xs text-white/50">Leagues</div>
-        </div>
-        <div className="card text-center">
-          <div className="text-2xl font-display text-gold">{memberships.length}</div>
-          <div className="text-xs text-white/50">Memberships</div>
+      {/* Stats */}
+      <div className="p-4">
+        <div className="grid grid-cols-3 gap-3">
+          <div className="card text-center">
+            <div className="text-2xl font-display text-gold">{users.length}</div>
+            <div className="text-xs text-white/50">Total Users</div>
+          </div>
+          <div className="card text-center">
+            <div className="text-2xl font-display text-gold">{allLeagues.length}</div>
+            <div className="text-xs text-white/50">Leagues</div>
+          </div>
+          <div className="card text-center">
+            <div className="text-2xl font-display text-gold">{memberships.length}</div>
+            <div className="text-xs text-white/50">Memberships</div>
+          </div>
         </div>
       </div>
 
@@ -406,7 +462,7 @@ export default function SuperAdminPanel() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {leagues.map(league => {
+                    {allLeagues.map(league => {
                       const alreadyMember = selectedUser && isUserInLeague(selectedUser.id, league.id)
                       return (
                         <button
