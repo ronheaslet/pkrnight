@@ -98,8 +98,6 @@ export default function Dashboard() {
 
   // Check if user can perform actions based on roles
   const canPauseTimer = userRoles.some(r => r.can_pause_timer) || isAdmin
-  const canManageRebuys = userRoles.some(r => r.can_manage_rebuys) || isAdmin
-  const canEliminate = userRoles.some(r => r.can_eliminate_players) || isAdmin
 
   // Render active tab content
   const renderTab = () => {
@@ -114,12 +112,7 @@ export default function Dashboard() {
       case 'standings':
         return <StandingsTab />
       case 'timer':
-        return <LiveGameTab 
-          viewMode={viewMode}
-          canPauseTimer={canPauseTimer}
-          canManageRebuys={canManageRebuys}
-          canEliminate={canEliminate}
-        />
+        return <LiveGameTab />
       case 'trophies':
         return <TrophiesTab />
       case 'messages':
