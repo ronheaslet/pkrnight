@@ -408,7 +408,7 @@ export default function StandingsTab() {
                       <div>
                         <div className="font-semibold text-sm">{game.events?.title}</div>
                         <div className="text-xs text-white/50">
-                          {new Date(game.events?.event_date).toLocaleDateString('en-US', {
+                          {new Date(game.events?.event_date + 'T00:00').toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric'
@@ -605,7 +605,7 @@ function PlayerDetailModal({ player, leagueId, onClose }) {
                   <div className="flex-1">
                     <div className="text-sm font-medium">{game.game_sessions?.events?.title}</div>
                     <div className="text-xs text-white/50">
-                      {new Date(game.game_sessions?.events?.event_date).toLocaleDateString()}
+                      {game.game_sessions?.events?.event_date && new Date(game.game_sessions.events.event_date + 'T00:00').toLocaleDateString()}
                       {game.rebuy_count > 0 && ` • ${game.rebuy_count}R`}
                     </div>
                   </div>
