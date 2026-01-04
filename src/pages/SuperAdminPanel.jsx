@@ -48,7 +48,7 @@ export default function SuperAdminPanel() {
       .order('created_at', { ascending: false })
     
     if (usersError) {
-      console.error('Error fetching users:', usersError)
+      // Error fetching users
     } else {
       setUsers(usersData || [])
     }
@@ -60,7 +60,7 @@ export default function SuperAdminPanel() {
       .order('name', { ascending: true })
     
     if (leaguesError) {
-      console.error('Error fetching leagues:', leaguesError)
+      // Error fetching leagues
     } else {
       setAllLeagues(leaguesData || [])
     }
@@ -71,7 +71,7 @@ export default function SuperAdminPanel() {
       .select('*')
     
     if (membershipsError) {
-      console.error('Error fetching memberships:', membershipsError)
+      // Error fetching memberships
     } else {
       setMemberships(membershipsData || [])
     }
@@ -116,7 +116,6 @@ export default function SuperAdminPanel() {
       .select()
 
     if (error) {
-      console.error('Error adding user to league:', error)
       setMessage({ type: 'error', text: `Error: ${error.message}` })
     } else {
       setMessage({ type: 'success', text: `${selectedUser.display_name || selectedUser.full_name} added to ${selectedLeague.name}!` })
@@ -145,7 +144,6 @@ export default function SuperAdminPanel() {
       .eq('league_id', leagueId)
 
     if (error) {
-      console.error('Error removing user:', error)
       setMessage({ type: 'error', text: `Error: ${error.message}` })
     } else {
       setMessage({ type: 'success', text: 'User removed from league' })
@@ -162,7 +160,7 @@ export default function SuperAdminPanel() {
       await signOut()
       navigate('/login')
     } catch (err) {
-      console.error('Logout error:', err)
+      // Logout error
     }
   }
 

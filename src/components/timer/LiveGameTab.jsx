@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useLeague } from '../../contexts/LeagueContext'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import { FALLBACK_BLINDS } from '../../utils/constants'
+import { FALLBACK_BLINDS, DEFAULT_TIMER_SECONDS, TIMER_SYNC_INTERVAL, DEFAULT_BUY_IN } from '../../utils/constants'
+import { getInitials, getOrdinal, formatTime } from '../../utils/helpers'
 
 export default function LiveGameTab() {
   const { currentLeague, isAdmin } = useLeague()
@@ -25,7 +26,7 @@ export default function LiveGameTab() {
   const [blindStructure, setBlindStructure] = useState(FALLBACK_BLINDS)
   
   // Timer state
-  const [timeRemaining, setTimeRemaining] = useState(15 * 60)
+  const [timeRemaining, setTimeRemaining] = useState(DEFAULT_TIMER_SECONDS)
   const [isRunning, setIsRunning] = useState(false)
   const [currentLevel, setCurrentLevel] = useState(1)
   const [warningPlayed, setWarningPlayed] = useState(false)
@@ -35,7 +36,7 @@ export default function LiveGameTab() {
   // Game settings
   const [rebuysCutoffLevel, setRebuysCutoffLevel] = useState(6)
   const [rebuysCutoffType, setRebuysCutoffType] = useState('level') // 'level' or 'halftime'
-  const [buyInAmount, setBuyInAmount] = useState(20)
+  const [buyInAmount, setBuyInAmount] = useState(DEFAULT_BUY_IN)
   const [rebuyAmount, setRebuyAmount] = useState(20)
   const [bountyAmount, setBountyAmount] = useState(5)
   const [startingChips, setStartingChips] = useState(10000)
@@ -81,7 +82,7 @@ export default function LiveGameTab() {
       }
       
       if (!targetStructureId) {
-        console.log('No blind structure found, using fallback')
+        // No custom blind structure found, using fallback
         return FALLBACK_BLINDS
       }
       
@@ -92,7 +93,7 @@ export default function LiveGameTab() {
         .order('level_number', { ascending: true })
       
       if (error || !levels || levels.length === 0) {
-        console.log('No blind levels found, using fallback')
+        // No blind levels found, using fallback
         return FALLBACK_BLINDS
       }
       
@@ -107,8 +108,8 @@ export default function LiveGameTab() {
       
       setBlindStructure(blinds)
       return blinds
-    } catch (err) {
-      console.error('Error fetching blind structure:', err)
+    } catch {
+      // Error fetching blind structure, using fallback
       return FALLBACK_BLINDS
     }
   }
@@ -187,7 +188,7 @@ export default function LiveGameTab() {
             playSound('levelEnd')
             setWarningPlayed(false)
             advanceLevel()
-            return blindStructure[currentLevel]?.duration * 60 || 15 * 60
+            return blindStructure[currentLevel]?.duration * 60 || DEFAULT_TIMER_SECONDS
           }
           return t - 1
         })
@@ -201,17 +202,21 @@ export default function LiveGameTab() {
   // Sync timer to database
   useEffect(() => {
     if (gameSession && isAdmin) {
-      const syncInterval = setInterval(() => syncTimerToDatabase(), 10000)
+      const syncInterval = setInterval(() => syncTimerToDatabase(), TIMER_SYNC_INTERVAL)
       return () => clearInterval(syncInterval)
     }
   }, [gameSession, isRunning, timeRemaining, currentLevel])
 
   const syncTimerToDatabase = async () => {
     if (!gameSession) return
-    await supabase
-      .from('game_sessions')
-      .update({ current_level: currentLevel, time_remaining_seconds: timeRemaining, is_running: isRunning })
-      .eq('id', gameSession.id)
+    try {
+      await supabase
+        .from('game_sessions')
+        .update({ current_level: currentLevel, time_remaining_seconds: timeRemaining, is_running: isRunning })
+        .eq('id', gameSession.id)
+    } catch {
+      // Timer sync failed silently - will retry on next interval
+    }
   }
 
   // Audio functions
@@ -235,8 +240,8 @@ export default function LiveGameTab() {
       oscillator.start()
       gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration)
       oscillator.stop(ctx.currentTime + duration)
-    } catch (e) {
-      console.log('Audio not available')
+    } catch {
+      // Audio not available - fail silently
     }
   }
 
@@ -396,8 +401,8 @@ export default function LiveGameTab() {
         .order('min_players', { ascending: true })
       
       return tiers || null
-    } catch (err) {
-      console.error('Error fetching payout tiers:', err)
+    } catch {
+      // Error fetching payout tiers - return null to use defaults
       return null
     }
   }
@@ -432,8 +437,8 @@ export default function LiveGameTab() {
         participationPoints: structureData?.participation_points || 0,
         bountyPoints: structureData?.bounty_points || 0
       }
-    } catch (err) {
-      console.error('Error fetching points structure:', err)
+    } catch {
+      // Error fetching points structure - return null to use defaults
       return null
     }
   }
@@ -589,26 +594,26 @@ export default function LiveGameTab() {
           .eq('id', participant.id)
         
         // Update league member stats
-        await supabase.rpc('update_member_stats', {
-          p_user_id: participant.user_id,
-          p_league_id: currentLeague.id,
-          p_points: pointsData.total,
-          p_bounties: pointsData.bountyCount,
-          p_is_winner: participant.finish_position === 1
-        }).catch(() => {
+        try {
+          await supabase.rpc('update_member_stats', {
+            p_user_id: participant.user_id,
+            p_league_id: currentLeague.id,
+            p_points: pointsData.total,
+            p_bounties: pointsData.bountyCount,
+            p_is_winner: participant.finish_position === 1
+          })
+        } catch {
           // If RPC doesn't exist, update directly
-          updateMemberStatsDirectly(
+          await updateMemberStatsDirectly(
             participant.user_id,
             pointsData.total,
             pointsData.bountyCount,
             participant.finish_position === 1
           )
-        })
+        }
       }
-      
-      console.log('Game finalized - payouts:', payouts, 'points:', points)
-    } catch (err) {
-      console.error('Error finalizing game results:', err)
+    } catch {
+      // Error finalizing game results - stats may not be updated
     }
   }
 
@@ -636,11 +641,11 @@ export default function LiveGameTab() {
 
   const openTVMode = () => {
     setShowTVMode(true)
-    // Try to use Presentation API for casting
+    // Try to use Presentation API for casting, fall back to fullscreen
     if ('presentation' in navigator && navigator.presentation.defaultRequest) {
-      navigator.presentation.defaultRequest.start()
-        .then(connection => console.log('Connected to display:', connection))
-        .catch(err => console.log('Presentation API not available, using fullscreen'))
+      navigator.presentation.defaultRequest.start().catch(() => {
+        // Presentation API not available, using fullscreen instead
+      })
     }
     // Fallback to fullscreen
     document.documentElement.requestFullscreen?.()
@@ -649,12 +654,6 @@ export default function LiveGameTab() {
   const closeTVMode = () => {
     setShowTVMode(false)
     document.exitFullscreen?.()
-  }
-
-  const formatTime = (seconds) => {
-    const m = Math.floor(seconds / 60)
-    const s = seconds % 60
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
   }
 
   const currentBlinds = blindStructure[currentLevel - 1] || blindStructure[0]
@@ -1249,7 +1248,3 @@ function SettingsModal({ rebuysCutoffLevel, rebuysCutoffType, onSave, onClose })
     </div>
   )
 }
-
-// ========== HELPERS ==========
-function getInitials(name) { if (!name) return '?'; return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) }
-function getOrdinal(n) { const s = ['th', 'st', 'nd', 'rd']; const v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]) }

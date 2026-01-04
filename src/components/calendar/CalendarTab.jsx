@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useLeague } from '../../contexts/LeagueContext'
 import { useAuth } from '../../contexts/AuthContext'
+import { getInitials } from '../../utils/helpers'
 
 export default function CalendarTab() {
   const { currentLeague, isAdmin } = useLeague()
@@ -185,7 +186,7 @@ function EventCard({ event, isFirst, userId, isAdmin, onRsvpUpdate, onEdit }) {
       setMyRsvp(status)
       onRsvpUpdate(status)
     } catch (err) {
-      console.error('RSVP error:', err)
+      // RSVP error
     } finally {
       setSaving(false)
     }
@@ -195,11 +196,6 @@ function EventCard({ event, isFirst, userId, isAdmin, onRsvpUpdate, onEdit }) {
     going: event.event_rsvps?.filter(r => r.status === 'going') || [],
     maybe: event.event_rsvps?.filter(r => r.status === 'maybe') || [],
     not_going: event.event_rsvps?.filter(r => r.status === 'not_going') || []
-  }
-
-  const getInitials = (name) => {
-    if (!name) return '?'
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   }
 
   const formatTime = (timeStr) => {

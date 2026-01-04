@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useLeague } from '../../contexts/LeagueContext'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
+import { getInitials, formatMoney } from '../../utils/helpers'
 
 export default function StandingsTab() {
   const { currentLeague } = useLeague()
@@ -50,7 +51,6 @@ export default function StandingsTab() {
       .eq('status', 'active')
 
     if (error) {
-      console.error('Error fetching standings:', error)
       setLoading(false)
       return
     }
@@ -193,17 +193,6 @@ export default function StandingsTab() {
     if (rank === 2) return 'bg-gradient-to-br from-gray-300 to-gray-500 text-gray-800'
     if (rank === 3) return 'bg-gradient-to-br from-amber-600 to-amber-800 text-white'
     return 'bg-gray-700 text-white'
-  }
-
-  const getInitials = (name) => {
-    if (!name) return '?'
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-  }
-
-  const formatMoney = (amount) => {
-    const num = parseFloat(amount) || 0
-    if (num >= 0) return `$${num.toLocaleString()}`
-    return `-$${Math.abs(num).toLocaleString()}`
   }
 
   const openPlayerDetails = (player) => {
@@ -516,11 +505,6 @@ function PlayerDetailModal({ player, leagueId, onClose }) {
       setPlayerGames(leagueGames)
     }
     setLoading(false)
-  }
-
-  const getInitials = (name) => {
-    if (!name) return '?'
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   }
 
   const getFinishEmoji = (position) => {

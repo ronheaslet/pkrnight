@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useLeague } from '../../contexts/LeagueContext'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
+import { getInitials, getOrdinal } from '../../utils/helpers'
 
 // Default roles to create for new leagues
 const DEFAULT_ROLES = [
@@ -164,11 +165,6 @@ export default function AdminTab() {
     navigator.clipboard.writeText(currentLeague?.slug || '')
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
-  }
-
-  const getInitials = (name) => {
-    if (!name) return '?'
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   }
 
   const getRoleColor = (role, memberType) => {
@@ -468,11 +464,6 @@ function MembersModal({ league, members, roles, roleAssignments, onClose, onUpda
   const [saving, setSaving] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
 
-  const getInitials = (name) => {
-    if (!name) return '?'
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-  }
-
   const getMemberRoles = (userId) => {
     return roleAssignments
       .filter(a => a.user_id === userId)
@@ -740,11 +731,6 @@ function RolesModal({ league, roles, members, roleAssignments, onClose, onUpdate
   })
 
   const emojiOptions = ['🎯', '🛡️', '📊', '🃏', '🔄', '💼', '🎪', '🔔', '📣', '🎖️', '⚡', '🔧', '📝', '🎬', '🏅']
-
-  const getInitials = (name) => {
-    if (!name) return '?'
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-  }
 
   const getRoleAssignees = (roleId) => {
     const assignedUserIds = roleAssignments.filter(a => a.role_id === roleId).map(a => a.user_id)
@@ -1553,11 +1539,6 @@ function DuesModal({ league, members, pot, onClose, onUpdate }) {
   const [amount, setAmount] = useState(league?.annual_dues || 50)
   const [saving, setSaving] = useState(false)
 
-  const getInitials = (name) => {
-    if (!name) return '?'
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-  }
-
   const recordPayment = async () => {
     if (!selectedMember) return
     setSaving(true)
@@ -1857,13 +1838,4 @@ function Modal({ title, children, onClose }) {
       </div>
     </div>
   )
-}
-
-// ============================================
-// HELPER
-// ============================================
-function getOrdinal(n) {
-  const s = ['th', 'st', 'nd', 'rd']
-  const v = n % 100
-  return n + (s[(v - 20) % 10] || s[v] || s[0])
 }

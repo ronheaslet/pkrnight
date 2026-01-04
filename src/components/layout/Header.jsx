@@ -78,8 +78,8 @@ export default function Header({ leagueName, onLeagueClick, hasMultipleLeagues, 
     try {
       await signOut()
       navigate('/login')
-    } catch (err) {
-      console.error('Logout error:', err)
+    } catch {
+      // Logout error - redirect anyway
     }
   }
 

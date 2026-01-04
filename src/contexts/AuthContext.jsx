@@ -64,7 +64,7 @@ export function AuthProvider({ children }) {
           full_name: fullName,
           display_name: fullName.split(' ')[0]
         })
-      if (profileError) console.error('Profile creation error:', profileError)
+      // Profile creation error is handled silently - user can still proceed
     }
     
     return data

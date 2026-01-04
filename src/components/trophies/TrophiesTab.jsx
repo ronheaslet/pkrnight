@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useLeague } from '../../contexts/LeagueContext'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
+import { getInitials } from '../../utils/helpers'
 
 export default function TrophiesTab() {
   const { currentLeague, isAdmin } = useLeague()
@@ -191,11 +192,6 @@ export default function TrophiesTab() {
     })
 
     return Object.values(savedByYearCategory).sort((a, b) => b.year - a.year)
-  }
-
-  const getInitials = (name) => {
-    if (!name) return '?'
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   }
 
   const getCategoryInfo = (category) => {
@@ -474,11 +470,6 @@ function AddWinnerModal({ leagueId, userId, onClose, onSave }) {
 
     setSaving(false)
     onSave()
-  }
-
-  const getInitials = (name) => {
-    if (!name) return '?'
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   }
 
   return (

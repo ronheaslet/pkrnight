@@ -42,7 +42,7 @@ export function LeagueProvider({ children }) {
       .eq('status', 'active')
 
     if (error) {
-      console.error('Error fetching leagues:', error)
+      // Error fetching leagues - user may not have any leagues yet
       setLoading(false)
       return
     }

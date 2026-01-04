@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useLeague } from '../../contexts/LeagueContext'
 import { supabase } from '../../lib/supabase'
-import { FALLBACK_BLINDS } from '../../utils/constants'
+import { FALLBACK_BLINDS, DEFAULT_TIMER_SECONDS } from '../../utils/constants'
+import { formatTime } from '../../utils/helpers'
 
 export default function DealerScreen({ canPauseTimer = true }) {
   const { currentLeague } = useLeague()
@@ -9,7 +10,7 @@ export default function DealerScreen({ canPauseTimer = true }) {
   const [loading, setLoading] = useState(true)
   const [blindStructure, setBlindStructure] = useState(FALLBACK_BLINDS)
   
-  const [timeRemaining, setTimeRemaining] = useState(15 * 60)
+  const [timeRemaining, setTimeRemaining] = useState(DEFAULT_TIMER_SECONDS)
   const [isRunning, setIsRunning] = useState(false)
   const [currentLevel, setCurrentLevel] = useState(1)
   const timerRef = useRef(null)
@@ -53,8 +54,8 @@ export default function DealerScreen({ canPauseTimer = true }) {
           duration: l.duration_minutes
         })))
       }
-    } catch (err) {
-      console.error('Error fetching blind structure:', err)
+    } catch {
+      // Error fetching blind structure - using fallback
     }
   }
 
@@ -95,7 +96,7 @@ export default function DealerScreen({ canPauseTimer = true }) {
         (payload) => {
           if (payload.new && !payload.new.ended_at) {
             setCurrentLevel(payload.new.current_level || 1)
-            setTimeRemaining(payload.new.time_remaining_seconds || 15 * 60)
+            setTimeRemaining(payload.new.time_remaining_seconds || DEFAULT_TIMER_SECONDS)
             setIsRunning(payload.new.is_running || false)
           }
         }
@@ -126,7 +127,7 @@ export default function DealerScreen({ canPauseTimer = true }) {
       playSound()
       const nextLevel = Math.min(currentLevel + 1, blindStructure.length)
       setCurrentLevel(nextLevel)
-      const nextLevelDuration = blindStructure[nextLevel - 1]?.duration * 60 || 15 * 60
+      const nextLevelDuration = blindStructure[nextLevel - 1]?.duration * 60 || DEFAULT_TIMER_SECONDS
       setTimeRemaining(nextLevelDuration)
     }
   }, [timeRemaining, isRunning, currentLevel, blindStructure])
@@ -159,12 +160,6 @@ export default function DealerScreen({ canPauseTimer = true }) {
         setTimeout(() => oscillator.stop(), 300)
       }, 300)
     } catch (e) {}
-  }
-
-  const formatTime = (seconds) => {
-    const m = Math.floor(seconds / 60)
-    const s = seconds % 60
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
   }
 
   const currentBlinds = blindStructure[currentLevel - 1] || blindStructure[0]

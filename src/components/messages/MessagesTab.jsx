@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useLeague } from '../../contexts/LeagueContext'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
+import { getInitials, getOrdinal, timeAgo } from '../../utils/helpers'
 
 export default function MessagesTab() {
   const { currentLeague } = useLeague()
@@ -227,11 +228,6 @@ export default function MessagesTab() {
     }
   }
 
-  const getInitials = (name) => {
-    if (!name) return '?'
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-  }
-
   const getAvatarColor = (userId) => {
     const member = members[userId]
     if (member?.role === 'owner') return 'bg-gold text-felt-dark'
@@ -261,24 +257,6 @@ export default function MessagesTab() {
     } else {
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     }
-  }
-
-  const timeAgo = (timestamp) => {
-    const now = new Date()
-    const date = new Date(timestamp)
-    const seconds = Math.floor((now - date) / 1000)
-    
-    if (seconds < 60) return 'Just now'
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
-    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`
-    return date.toLocaleDateString()
-  }
-
-  const getOrdinal = (n) => {
-    const s = ['th', 'st', 'nd', 'rd']
-    const v = n % 100
-    return n + (s[(v - 20) % 10] || s[v] || s[0])
   }
 
   const getNotificationIcon = (type) => {
