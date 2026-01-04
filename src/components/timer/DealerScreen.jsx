@@ -6,26 +6,43 @@ import { formatTime } from '../../utils/helpers'
 
 export default function DealerScreen({ canPauseTimer = true }) {
   const { currentLeague } = useLeague()
+  const [events, setEvents] = useState([])
+  const [selectedEvent, setSelectedEvent] = useState(null)
   const [gameSession, setGameSession] = useState(null)
   const [loading, setLoading] = useState(true)
   const [blindStructure, setBlindStructure] = useState(FALLBACK_BLINDS)
-  
+
   const [timeRemaining, setTimeRemaining] = useState(DEFAULT_TIMER_SECONDS)
   const [isRunning, setIsRunning] = useState(false)
   const [currentLevel, setCurrentLevel] = useState(1)
   const timerRef = useRef(null)
+  const channelRef = useRef(null)
 
+  // Fetch events and blind structure on mount
   useEffect(() => {
     if (currentLeague) {
       fetchBlindStructure()
-      fetchActiveGame()
-      subscribeToGame()
+      fetchEvents()
     }
     return () => {
-      supabase.removeAllChannels()
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+      }
       clearInterval(timerRef.current)
     }
   }, [currentLeague])
+
+  // Subscribe to selected game session updates
+  useEffect(() => {
+    if (selectedEvent && gameSession) {
+      subscribeToGame(gameSession.id)
+    }
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+      }
+    }
+  }, [selectedEvent, gameSession?.id])
 
   // Fetch blind structure from database
   const fetchBlindStructure = async () => {
@@ -36,15 +53,15 @@ export default function DealerScreen({ canPauseTimer = true }) {
         .eq('league_id', currentLeague.id)
         .eq('is_default', true)
         .single()
-      
+
       if (!structure?.id) return
-      
+
       const { data: levels } = await supabase
         .from('blind_levels')
         .select('*')
         .eq('structure_id', structure.id)
         .order('level_number', { ascending: true })
-      
+
       if (levels && levels.length > 0) {
         setBlindStructure(levels.map(l => ({
           level: l.level_number,
@@ -59,45 +76,138 @@ export default function DealerScreen({ canPauseTimer = true }) {
     }
   }
 
-  const fetchActiveGame = async () => {
+  // Fetch all events with game sessions
+  const fetchEvents = async () => {
+    setLoading(true)
     const today = new Date().toISOString().split('T')[0]
-    
-    const { data: events } = await supabase
+
+    // Fetch events from past 30 days to 30 days in future (to catch recent/upcoming games)
+    const pastDate = new Date()
+    pastDate.setDate(pastDate.getDate() - 30)
+    const pastDateStr = pastDate.toISOString().split('T')[0]
+
+    const { data, error } = await supabase
       .from('events')
       .select(`
         id,
+        title,
+        event_date,
         game_sessions (
-          id, current_level, time_remaining_seconds, is_running, ended_at
+          id, current_level, time_remaining_seconds, is_running, started_at, ended_at
         )
       `)
       .eq('league_id', currentLeague.id)
-      .gte('event_date', today)
-      .order('event_date', { ascending: true })
-      .limit(1)
+      .gte('event_date', pastDateStr)
+      .order('event_date', { ascending: false })
+      .limit(20)
 
-    const event = events?.[0]
-    const session = event?.game_sessions?.[0]
-    
-    if (session && !session.ended_at) {
-      setGameSession(session)
-      setCurrentLevel(session.current_level || 1)
-      setTimeRemaining(session.time_remaining_seconds || blindStructure[0].duration * 60)
-      setIsRunning(session.is_running || false)
+    if (!error && data) {
+      // Filter to only events that have active (not ended) game sessions, or today's/future events
+      const relevantEvents = data.filter(e => {
+        const hasActiveSession = e.game_sessions?.some(s => s.started_at && !s.ended_at)
+        const isTodayOrFuture = e.event_date >= today
+        return hasActiveSession || isTodayOrFuture
+      })
+
+      // Sort: active games first, then by date (today first, then future, then past)
+      relevantEvents.sort((a, b) => {
+        const aHasActive = a.game_sessions?.some(s => s.started_at && !s.ended_at)
+        const bHasActive = b.game_sessions?.some(s => s.started_at && !s.ended_at)
+
+        // Active games first
+        if (aHasActive && !bHasActive) return -1
+        if (bHasActive && !aHasActive) return 1
+
+        // Then by date (closest to today first)
+        const aDate = new Date(a.event_date)
+        const bDate = new Date(b.event_date)
+        const todayDate = new Date(today)
+        const aDiff = Math.abs(aDate - todayDate)
+        const bDiff = Math.abs(bDate - todayDate)
+        return aDiff - bDiff
+      })
+
+      setEvents(relevantEvents)
+
+      // Auto-select: first active game, or today's event, or first in list
+      const activeEvent = relevantEvents.find(e =>
+        e.game_sessions?.some(s => s.started_at && !s.ended_at)
+      )
+      const todayEvent = relevantEvents.find(e => e.event_date === today)
+      const defaultEvent = activeEvent || todayEvent || relevantEvents[0] || null
+
+      if (defaultEvent) {
+        setSelectedEvent(defaultEvent)
+        loadGameSession(defaultEvent)
+      } else {
+        setLoading(false)
+      }
+    } else {
+      setLoading(false)
+    }
+  }
+
+  // Load game session for selected event
+  const loadGameSession = async (event) => {
+    if (!event) {
+      setGameSession(null)
+      setLoading(false)
+      return
+    }
+
+    const activeSession = event.game_sessions?.find(s => s.started_at && !s.ended_at)
+
+    if (activeSession) {
+      setGameSession(activeSession)
+      setCurrentLevel(activeSession.current_level || 1)
+      setTimeRemaining(activeSession.time_remaining_seconds || blindStructure[0].duration * 60)
+      setIsRunning(activeSession.is_running || false)
+    } else {
+      setGameSession(null)
+      setCurrentLevel(1)
+      setTimeRemaining(blindStructure[0].duration * 60)
+      setIsRunning(false)
     }
     setLoading(false)
   }
 
-  const subscribeToGame = () => {
-    const channel = supabase
-      .channel('dealer-game-sync')
+  // Handle event selection change
+  const handleEventChange = (eventId) => {
+    const event = events.find(e => e.id === eventId)
+    if (event) {
+      setSelectedEvent(event)
+      setLoading(true)
+      loadGameSession(event)
+    }
+  }
+
+  // Subscribe to game session updates
+  const subscribeToGame = (sessionId) => {
+    // Remove previous subscription
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current)
+    }
+
+    channelRef.current = supabase
+      .channel(`dealer-game-${sessionId}`)
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'game_sessions' },
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'game_sessions',
+          filter: `id=eq.${sessionId}`
+        },
         (payload) => {
-          if (payload.new && !payload.new.ended_at) {
-            setCurrentLevel(payload.new.current_level || 1)
-            setTimeRemaining(payload.new.time_remaining_seconds || DEFAULT_TIMER_SECONDS)
-            setIsRunning(payload.new.is_running || false)
+          if (payload.new) {
+            if (payload.new.ended_at) {
+              // Game ended - refresh events list
+              fetchEvents()
+            } else {
+              setCurrentLevel(payload.new.current_level || 1)
+              setTimeRemaining(payload.new.time_remaining_seconds || DEFAULT_TIMER_SECONDS)
+              setIsRunning(payload.new.is_running || false)
+            }
           }
         }
       )
@@ -134,10 +244,10 @@ export default function DealerScreen({ canPauseTimer = true }) {
 
   const toggleTimer = async () => {
     if (!gameSession || !canPauseTimer) return
-    
+
     const newIsRunning = !isRunning
     setIsRunning(newIsRunning)
-    
+
     await supabase
       .from('game_sessions')
       .update({ is_running: newIsRunning })
@@ -159,7 +269,27 @@ export default function DealerScreen({ canPauseTimer = true }) {
         oscillator.frequency.value = 1000
         setTimeout(() => oscillator.stop(), 300)
       }, 300)
-    } catch (e) {}
+    } catch {
+      // Audio not available
+    }
+  }
+
+  const formatEventDate = (dateStr) => {
+    const date = new Date(dateStr + 'T00:00')
+    const today = new Date()
+    const todayStr = today.toISOString().split('T')[0]
+
+    if (dateStr === todayStr) return 'Today'
+
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    if (dateStr === yesterday.toISOString().split('T')[0]) return 'Yesterday'
+
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    if (dateStr === tomorrow.toISOString().split('T')[0]) return 'Tomorrow'
+
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   }
 
   const currentBlinds = blindStructure[currentLevel - 1] || blindStructure[0]
@@ -173,13 +303,66 @@ export default function DealerScreen({ canPauseTimer = true }) {
     )
   }
 
-  if (!gameSession) {
+  // No events at all
+  if (events.length === 0) {
     return (
       <div className="min-h-screen bg-felt-dark flex items-center justify-center p-4">
         <div className="text-center">
           <div className="text-6xl mb-4">🃏</div>
-          <div className="text-xl text-white/60">No Active Game</div>
-          <div className="text-white/40 mt-2">Waiting for a game to start...</div>
+          <div className="text-xl text-white/60">No Games Scheduled</div>
+          <div className="text-white/40 mt-2">Schedule a game in the Calendar tab</div>
+        </div>
+      </div>
+    )
+  }
+
+  // No active game session for selected event
+  if (!gameSession) {
+    return (
+      <div className="min-h-screen bg-felt-dark flex flex-col">
+        {/* Header with game selector */}
+        <div className="px-4 py-3 border-b border-white/10">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xl">🃏</span>
+            <span className="text-gold font-display">Dealer View</span>
+          </div>
+          {events.length > 1 && (
+            <select
+              value={selectedEvent?.id || ''}
+              onChange={(e) => handleEventChange(e.target.value)}
+              className="input w-full text-sm"
+            >
+              {events.map(ev => {
+                const hasActiveGame = ev.game_sessions?.some(s => s.started_at && !s.ended_at)
+                return (
+                  <option key={ev.id} value={ev.id}>
+                    {ev.title} - {formatEventDate(ev.event_date)}
+                    {hasActiveGame ? ' 🔴 LIVE' : ''}
+                  </option>
+                )
+              })}
+            </select>
+          )}
+        </div>
+
+        {/* Waiting message */}
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="text-center">
+            <div className="text-6xl mb-4">⏳</div>
+            <div className="text-xl text-white/60 mb-2">
+              {selectedEvent?.title || 'No Game Selected'}
+            </div>
+            <div className="text-white/40">
+              {selectedEvent
+                ? 'Waiting for game to start...'
+                : 'Select a game from the dropdown above'}
+            </div>
+            {selectedEvent && (
+              <div className="text-white/30 text-sm mt-4">
+                {formatEventDate(selectedEvent.event_date)}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     )
@@ -187,13 +370,33 @@ export default function DealerScreen({ canPauseTimer = true }) {
 
   return (
     <div className="min-h-screen bg-felt-dark flex flex-col">
-      {/* Minimal header */}
+      {/* Header with game selector */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-white/10">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
           <span className="text-xl">🃏</span>
-          <span className="text-gold font-display">Dealer View</span>
+          {events.length > 1 ? (
+            <select
+              value={selectedEvent?.id || ''}
+              onChange={(e) => handleEventChange(e.target.value)}
+              className="bg-transparent text-gold font-display text-sm border-none outline-none cursor-pointer flex-1 min-w-0 truncate"
+            >
+              {events.map(ev => {
+                const hasActiveGame = ev.game_sessions?.some(s => s.started_at && !s.ended_at)
+                return (
+                  <option key={ev.id} value={ev.id} className="bg-felt-dark text-white">
+                    {ev.title} - {formatEventDate(ev.event_date)}
+                    {hasActiveGame ? ' 🔴' : ''}
+                  </option>
+                )
+              })}
+            </select>
+          ) : (
+            <span className="text-gold font-display truncate">
+              {selectedEvent?.title || 'Dealer View'}
+            </span>
+          )}
         </div>
-        <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${isRunning ? 'bg-green-600' : 'bg-yellow-600'}`}>
+        <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ml-2 ${isRunning ? 'bg-green-600' : 'bg-yellow-600'}`}>
           <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-white animate-pulse' : 'bg-white'}`}></div>
           {isRunning ? 'LIVE' : 'PAUSED'}
         </div>
@@ -203,9 +406,9 @@ export default function DealerScreen({ canPauseTimer = true }) {
       <div className="flex-1 flex flex-col items-center justify-center p-4">
         {/* Level indicator */}
         <div className="text-white/60 text-lg mb-2">Level {currentLevel}</div>
-        
+
         {/* Giant timer */}
-        <div 
+        <div
           className={`font-display tracking-wider mb-4 ${
             timeRemaining <= 60 ? 'text-red-500 animate-pulse' : 'text-white'
           }`}
@@ -239,8 +442,8 @@ export default function DealerScreen({ canPauseTimer = true }) {
           <button
             onClick={toggleTimer}
             className={`mt-8 px-12 py-4 rounded-2xl text-2xl font-bold transition-all ${
-              isRunning 
-                ? 'bg-yellow-600 hover:bg-yellow-500' 
+              isRunning
+                ? 'bg-yellow-600 hover:bg-yellow-500'
                 : 'bg-green-600 hover:bg-green-500'
             }`}
           >
@@ -266,7 +469,7 @@ export default function DealerScreen({ canPauseTimer = true }) {
           </div>
           <div>
             <div className="text-white/40 text-xs">Level</div>
-            <div className="text-gold font-display text-xl">{currentLevel}/15</div>
+            <div className="text-gold font-display text-xl">{currentLevel}/{blindStructure.length}</div>
           </div>
         </div>
       </div>
