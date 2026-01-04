@@ -4,6 +4,11 @@ import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { getInitials, getOrdinal, timeAgo } from '../../utils/helpers'
 
+// Helper to get display name with email fallback
+const getMessageDisplayName = (msg) => {
+  return msg?.users?.display_name || msg?.users?.full_name || msg?.users?.email?.split('@')[0] || 'Unknown'
+}
+
 export default function MessagesTab() {
   const { currentLeague } = useLeague()
   const { user } = useAuth()
@@ -42,7 +47,7 @@ export default function MessagesTab() {
                 message,
                 created_at,
                 user_id,
-                users (id, full_name, display_name)
+                users (id, full_name, display_name, email)
               `)
               .eq('id', payload.new.id)
               .single()
@@ -72,7 +77,7 @@ export default function MessagesTab() {
       .select(`
         user_id,
         role,
-        users (id, full_name, display_name)
+        users (id, full_name, display_name, email)
       `)
       .eq('league_id', currentLeague.id)
 
@@ -102,7 +107,8 @@ export default function MessagesTab() {
         users (
           id,
           full_name,
-          display_name
+          display_name,
+          email
         )
       `)
       .eq('league_id', currentLeague.id)
@@ -132,7 +138,7 @@ export default function MessagesTab() {
           user_id,
           finish_position,
           winnings,
-          users (full_name, display_name)
+          users (full_name, display_name, email)
         )
       `)
       .not('ended_at', 'is', null)
@@ -332,8 +338,8 @@ export default function MessagesTab() {
                   <div className="space-y-3">
                     {dateMessages.map((msg, idx) => {
                       const isMe = msg.user_id === user?.id
-                      const displayName = msg.users?.display_name || msg.users?.full_name || 'Unknown'
-                      const showAvatar = idx === 0 || 
+                      const displayName = getMessageDisplayName(msg)
+                      const showAvatar = idx === 0 ||
                         dateMessages[idx - 1]?.user_id !== msg.user_id
 
                       return (

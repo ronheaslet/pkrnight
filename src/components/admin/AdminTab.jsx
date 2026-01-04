@@ -4,6 +4,15 @@ import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { getInitials, getOrdinal } from '../../utils/helpers'
 
+// Helper to get display name with email fallback
+const getMemberDisplayName = (member) => {
+  return member?.users?.full_name || member?.users?.display_name || member?.users?.email || 'Unknown'
+}
+
+const getMemberShortName = (member) => {
+  return member?.users?.display_name || member?.users?.full_name || member?.users?.email?.split('@')[0] || 'Unknown'
+}
+
 // Default roles to create for new leagues
 const DEFAULT_ROLES = [
   { name: 'Owner', slug: 'owner', emoji: '👑', max_assignees: 1, is_system_role: true, can_pause_timer: true, can_start_game: true, can_manage_rebuys: true, can_eliminate_players: true, can_manage_money: true, can_edit_settings: true, can_manage_members: true, display_order: 0 },
@@ -251,10 +260,10 @@ export default function AdminTab() {
           {members.slice(0, 5).map(member => (
             <div key={member.id} className="flex items-center gap-3">
               <div className={`w-8 h-8 rounded-full ${getRoleColor(member.role, member.member_type)} flex items-center justify-center text-xs font-semibold`}>
-                {getInitials(member.users?.display_name || member.users?.full_name)}
+                {getInitials(getMemberShortName(member))}
               </div>
               <div className="flex-1">
-                <div className="text-sm">{member.users?.display_name || member.users?.full_name}</div>
+                <div className="text-sm">{getMemberShortName(member)}</div>
                 <div className="text-xs text-white/50">
                   {getMemberRoles(member.user_id).map(r => r.emoji).join(' ')}
                   {member.role === 'owner' && '👑'}
@@ -505,11 +514,12 @@ function MembersModal({ league, members, roles, roleAssignments, onClose, onUpda
   // Filter members based on active tab and search
   const filteredMembers = members.filter(m => {
     if (m.status !== 'active') return false
-    
-    // Search filter
+
+    // Search filter - check name and email
     const name = (m.users?.full_name || m.users?.display_name || '').toLowerCase()
-    if (searchTerm && !name.includes(searchTerm.toLowerCase())) return false
-    
+    const email = (m.users?.email || '').toLowerCase()
+    if (searchTerm && !name.includes(searchTerm.toLowerCase()) && !email.includes(searchTerm.toLowerCase())) return false
+
     // Tab filter
     switch (activeTab) {
       case 'paid': return m.member_type === 'paid'
@@ -577,18 +587,18 @@ function MembersModal({ league, members, roles, roleAssignments, onClose, onUpda
                 <div className="flex items-start gap-3">
                   {/* Avatar */}
                   <div className={`w-12 h-12 rounded-full ${member.member_type === 'paid' ? 'bg-green-600' : 'bg-gray-500'} flex items-center justify-center text-sm font-semibold flex-shrink-0`}>
-                    {getInitials(member.users?.display_name || member.users?.full_name)}
+                    {getInitials(getMemberShortName(member))}
                   </div>
-                  
+
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-white">
-                      {member.users?.full_name || member.users?.display_name || 'Unknown'}
+                      {getMemberDisplayName(member)}
                     </div>
                     {member.users?.display_name && member.users?.full_name && member.users?.display_name !== member.users?.full_name && (
                       <div className="text-xs text-white/50">"{member.users?.display_name}"</div>
                     )}
-                    <div className="text-xs text-white/40 truncate">{member.users?.email}</div>
+                    <div className="text-xs text-white/40 truncate">{member.users?.email || 'No email'}</div>
                     
                     {/* Badges */}
                     <div className="flex flex-wrap gap-1 mt-2">
@@ -942,9 +952,9 @@ function RolesModal({ league, roles, members, roleAssignments, onClose, onUpdate
                           <div className="text-xs text-white/50">{role.description}</div>
                         )}
                         <div className="text-xs text-white/40 mt-1">
-                          {assignees.length === 0 
-                            ? 'No one assigned' 
-                            : assignees.map(a => a.users?.full_name || a.users?.display_name).join(', ')
+                          {assignees.length === 0
+                            ? 'No one assigned'
+                            : assignees.map(a => getMemberShortName(a)).join(', ')
                           }
                         </div>
                       </div>
@@ -977,7 +987,7 @@ function RolesModal({ league, roles, members, roleAssignments, onClose, onUpdate
                                   isAssigned ? 'bg-gold text-felt-dark' : 'bg-white/10 text-white/70 hover:bg-white/20'
                                 }`}
                               >
-                                <span>{member.users?.full_name || member.users?.display_name}</span>
+                                <span>{getMemberShortName(member)}</span>
                                 {isAssigned && <span>✓</span>}
                               </button>
                             )
@@ -1632,7 +1642,7 @@ function DuesModal({ league, members, pot, onClose, onUpdate }) {
               <option value="">Select member...</option>
               {members.filter(m => m.status === 'active').map(m => (
                 <option key={m.id} value={m.id}>
-                  {m.users?.display_name || m.users?.full_name} {m.member_type === 'paid' ? '(Paid)' : '(Guest)'}
+                  {getMemberShortName(m)} {m.member_type === 'paid' ? '(Paid)' : '(Guest)'}
                 </option>
               ))}
             </select>
@@ -1674,10 +1684,10 @@ function DuesModal({ league, members, pot, onClose, onUpdate }) {
               {unpaidMembers.map(member => (
                 <div key={member.id} className="flex items-center gap-3 p-2 rounded-lg bg-white/5">
                   <div className="w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center text-xs font-semibold">
-                    {getInitials(member.users?.display_name || member.users?.full_name)}
+                    {getInitials(getMemberShortName(member))}
                   </div>
                   <div className="flex-1">
-                    <div className="text-sm">{member.users?.display_name || member.users?.full_name}</div>
+                    <div className="text-sm">{getMemberShortName(member)}</div>
                     <div className="text-xs text-white/50">
                       {member.guest_buyins_count || 0}/{league?.guest_buyins_for_eligibility || 5} buy-ins
                     </div>

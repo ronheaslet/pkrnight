@@ -14,7 +14,7 @@ export function AuthProvider({ children }) {
       const { session } = await auth.getSession()
       if (session?.user) {
         setUser(session.user)
-        await fetchProfile(session.user.id)
+        await fetchProfile(session.user.id, session.user.email)
       }
       setLoading(false)
     }
@@ -26,7 +26,7 @@ export function AuthProvider({ children }) {
       async (event, session) => {
         if (session?.user) {
           setUser(session.user)
-          await fetchProfile(session.user.id)
+          await fetchProfile(session.user.id, session.user.email)
         } else {
           setUser(null)
           setProfile(null)
@@ -38,25 +38,45 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  const fetchProfile = async (userId) => {
+  const fetchProfile = async (userId, email = null) => {
     const { data, error } = await supabase
       .from('users')
       .select('*')
       .eq('id', userId)
       .single()
-    
+
     if (data && !error) {
       setProfile(data)
+    } else if (error && error.code === 'PGRST116') {
+      // Profile doesn't exist - create one with available info
+      // This handles users who signed up via OAuth or before profile creation was added
+      const userEmail = email || (await supabase.auth.getUser())?.data?.user?.email
+      if (userEmail) {
+        const { data: newProfile } = await supabase
+          .from('users')
+          .insert({
+            id: userId,
+            email: userEmail,
+            full_name: userEmail.split('@')[0], // Use email prefix as fallback name
+            display_name: userEmail.split('@')[0]
+          })
+          .select()
+          .single()
+
+        if (newProfile) {
+          setProfile(newProfile)
+        }
+      }
     }
   }
 
   const signUp = async (email, password, fullName) => {
     const { data, error } = await auth.signUp(email, password, fullName)
     if (error) throw error
-    
+
     // Create user profile
     if (data.user) {
-      const { error: profileError } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('users')
         .insert({
           id: data.user.id,
@@ -64,9 +84,18 @@ export function AuthProvider({ children }) {
           full_name: fullName,
           display_name: fullName.split(' ')[0]
         })
-      // Profile creation error is handled silently - user can still proceed
+        .select()
+        .single()
+
+      if (profileError) {
+        // Log profile creation error but don't block signup
+        // Profile will be created on next sign-in via fetchProfile
+        console.warn('Profile creation failed, will retry on next sign-in:', profileError.message)
+      } else if (profileData) {
+        setProfile(profileData)
+      }
     }
-    
+
     return data
   }
 

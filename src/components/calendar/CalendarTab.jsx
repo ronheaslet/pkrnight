@@ -4,6 +4,11 @@ import { useLeague } from '../../contexts/LeagueContext'
 import { useAuth } from '../../contexts/AuthContext'
 import { getInitials } from '../../utils/helpers'
 
+// Helper to get display name with email fallback
+const getRsvpDisplayName = (rsvp) => {
+  return rsvp?.users?.display_name || rsvp?.users?.full_name || rsvp?.users?.email?.split('@')[0] || 'Unknown'
+}
+
 export default function CalendarTab() {
   const { currentLeague, isAdmin } = useLeague()
   const { user } = useAuth()
@@ -31,7 +36,8 @@ export default function CalendarTab() {
           users (
             id,
             full_name,
-            display_name
+            display_name,
+            email
           )
         )
       `)
@@ -255,9 +261,9 @@ function EventCard({ event, isFirst, userId, isAdmin, onRsvpUpdate, onEdit }) {
               {rsvpGroups.going.map((r, i) => (
                 <div key={i} className="flex items-center gap-1.5 bg-green-600/20 px-2 py-1 rounded-full">
                   <div className="w-5 h-5 rounded-full bg-green-600 flex items-center justify-center text-[10px]">
-                    {getInitials(r.users?.display_name || r.users?.full_name)}
+                    {getInitials(getRsvpDisplayName(r))}
                   </div>
-                  <span className="text-xs">{r.users?.display_name || r.users?.full_name || 'Unknown'}</span>
+                  <span className="text-xs">{getRsvpDisplayName(r)}</span>
                 </div>
               ))}
             </div>
@@ -271,9 +277,9 @@ function EventCard({ event, isFirst, userId, isAdmin, onRsvpUpdate, onEdit }) {
               {rsvpGroups.maybe.map((r, i) => (
                 <div key={i} className="flex items-center gap-1.5 bg-yellow-600/20 px-2 py-1 rounded-full">
                   <div className="w-5 h-5 rounded-full bg-yellow-600 flex items-center justify-center text-[10px]">
-                    {getInitials(r.users?.display_name || r.users?.full_name)}
+                    {getInitials(getRsvpDisplayName(r))}
                   </div>
-                  <span className="text-xs">{r.users?.display_name || r.users?.full_name || 'Unknown'}</span>
+                  <span className="text-xs">{getRsvpDisplayName(r)}</span>
                 </div>
               ))}
             </div>
@@ -287,9 +293,9 @@ function EventCard({ event, isFirst, userId, isAdmin, onRsvpUpdate, onEdit }) {
               {rsvpGroups.not_going.map((r, i) => (
                 <div key={i} className="flex items-center gap-1.5 bg-red-600/20 px-2 py-1 rounded-full">
                   <div className="w-5 h-5 rounded-full bg-red-600/50 flex items-center justify-center text-[10px]">
-                    {getInitials(r.users?.display_name || r.users?.full_name)}
+                    {getInitials(getRsvpDisplayName(r))}
                   </div>
-                  <span className="text-xs">{r.users?.display_name || r.users?.full_name || 'Unknown'}</span>
+                  <span className="text-xs">{getRsvpDisplayName(r)}</span>
                 </div>
               ))}
             </div>
