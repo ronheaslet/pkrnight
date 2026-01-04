@@ -115,37 +115,56 @@ export function LeagueProvider({ children }) {
 
   // Join a league with invite code
   const joinLeague = async (inviteCode) => {
-    // Find league by slug/invite code
+    if (!inviteCode || !inviteCode.trim()) {
+      throw new Error('Please enter an invite code')
+    }
+
+    if (!user) {
+      throw new Error('You must be logged in to join a league')
+    }
+
+    // Find league by slug/invite code (case-insensitive)
     const { data: league, error: findError } = await supabase
       .from('leagues')
       .select('id, name, auto_approve_members')
-      .eq('slug', inviteCode.toLowerCase())
+      .ilike('slug', inviteCode.trim())
       .single()
 
     if (findError || !league) {
-      throw new Error('Invalid invite code')
+      throw new Error('Invalid invite code. Please check and try again.')
     }
 
-    // Check if already a member
-    const { data: existing } = await supabase
+    // Check if already a member (use maybeSingle to avoid error when no match)
+    const { data: existing, error: checkError } = await supabase
       .from('league_members')
       .select('id, status')
       .eq('league_id', league.id)
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
+
+    if (checkError) {
+      throw new Error('Unable to verify membership. Please try again.')
+    }
 
     if (existing) {
       if (existing.status === 'active') {
         throw new Error('You are already a member of this league')
       }
-      // Reactivate membership
-      await supabase
+      if (existing.status === 'pending') {
+        throw new Error('Your membership is pending approval')
+      }
+      // Reactivate membership (e.g., previously left or removed)
+      const { error: updateError } = await supabase
         .from('league_members')
         .update({ status: 'active' })
         .eq('id', existing.id)
+
+      if (updateError) {
+        throw new Error('Failed to rejoin league. Please try again.')
+      }
     } else {
       // Create new membership
-      await supabase
+      const { error: insertError } = await supabase
         .from('league_members')
         .insert({
           league_id: league.id,
@@ -153,10 +172,26 @@ export function LeagueProvider({ children }) {
           role: 'member',
           status: league.auto_approve_members ? 'active' : 'pending'
         })
+
+      if (insertError) {
+        // Check for common error scenarios
+        if (insertError.code === '23505') {
+          throw new Error('You are already a member of this league')
+        }
+        if (insertError.code === '42501') {
+          throw new Error('Unable to join this league. Please contact the league admin.')
+        }
+        throw new Error('Failed to join league. Please try again.')
+      }
     }
 
     await fetchLeagues()
-    return league
+
+    // Return league with pending status info
+    return {
+      ...league,
+      isPending: !league.auto_approve_members
+    }
   }
 
   // Update league settings (admin only)

@@ -10,18 +10,25 @@ export default function JoinLeague({ hasLeagues = false }) {
   
   const [inviteCode, setInviteCode] = useState('')
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleJoin = async (e) => {
     e.preventDefault()
     setError('')
+    setSuccess('')
     setLoading(true)
 
     try {
-      await joinLeague(inviteCode.trim())
-      navigate('/app')
+      const result = await joinLeague(inviteCode.trim())
+      if (result.isPending) {
+        setSuccess(`Request to join "${result.name}" submitted! Please wait for admin approval.`)
+        setInviteCode('')
+      } else {
+        navigate('/app')
+      }
     } catch (err) {
-      setError(err.message || 'Failed to join league')
+      setError(err.message || 'Failed to join league. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -92,6 +99,12 @@ export default function JoinLeague({ hasLeagues = false }) {
           {error && (
             <div className="bg-red-500/20 border border-red-500 text-red-400 px-4 py-3 rounded-xl mb-4 text-sm">
               {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="bg-green-500/20 border border-green-500 text-green-400 px-4 py-3 rounded-xl mb-4 text-sm">
+              {success}
             </div>
           )}
 
