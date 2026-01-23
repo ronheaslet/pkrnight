@@ -11,6 +11,7 @@ export function EventDetail() {
   const [event, setEvent] = useState(null)
   const [session, setSession] = useState(null)
   const [participants, setParticipants] = useState([])
+  const [timeline, setTimeline] = useState([])
   const [rsvps, setRsvps] = useState([])
   const [league, setLeague] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -39,6 +40,7 @@ export function EventDetail() {
         const gameData = await api.get(`/api/games/${eventData.event.session_id}`)
         setSession(gameData.session)
         setParticipants(gameData.participants)
+        if (gameData.timeline) setTimeline(gameData.timeline)
       }
     } catch (err) {
       setError(err.message)
@@ -318,6 +320,25 @@ export function EventDetail() {
           </div>
         </div>
       )}
+
+      {/* Game Timeline */}
+      {isCompleted && timeline.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold text-white mb-3">Game Timeline</h2>
+          <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+            <div className="space-y-2">
+              {timeline.map((evt, i) => (
+                <div key={i} className="flex items-start gap-3 text-sm">
+                  <span className="text-gray-600 text-xs whitespace-nowrap mt-0.5">
+                    {new Date(evt.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                  </span>
+                  <TimelineEvent event={evt} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -345,4 +366,23 @@ function StatusBadge({ status }) {
       {status || 'scheduled'}
     </span>
   )
+}
+
+function TimelineEvent({ event }) {
+  const data = event.event_data ? (typeof event.event_data === 'string' ? JSON.parse(event.event_data) : event.event_data) : {}
+
+  const messages = {
+    GAME_STARTED: () => <span className="text-green-400">Game started</span>,
+    PLAYER_REGISTERED: () => <span className="text-gray-300"><span className="text-white">{data.playerName || 'Player'}</span> registered</span>,
+    PLAYER_ELIMINATED: () => <span className="text-red-400"><span className="text-white">{data.playerName || 'Player'}</span> eliminated{data.eliminatorName ? ` by ${data.eliminatorName}` : ''} (#{data.position})</span>,
+    PLAYER_REBUY: () => <span className="text-yellow-400"><span className="text-white">{data.playerName || 'Player'}</span> rebought in</span>,
+    GAME_ENDED: () => <span className="text-blue-400">Game completed</span>,
+    TIMER_PAUSED: () => <span className="text-gray-400">Timer paused</span>,
+    TIMER_RESUMED: () => <span className="text-gray-400">Timer resumed</span>,
+    BLIND_LEVEL_UP: () => <span className="text-purple-400">Blinds up to Level {data.level}</span>
+  }
+
+  const render = messages[event.event_type]
+  if (!render) return <span className="text-gray-500">{event.event_type}</span>
+  return render()
 }

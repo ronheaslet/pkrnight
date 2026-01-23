@@ -77,6 +77,20 @@ games.get('/:sessionId', async (c) => {
   const userPermissions = await getUserPermissions(user.id, session.league_id)
   const isAdmin = membership[0].role === 'owner' || membership[0].role === 'admin'
 
+  // Include timeline for completed games
+  let timeline = []
+  if (session.status === 'completed') {
+    const { rows: events } = await query(
+      `SELECT ge.event_type, ge.event_data, ge.created_at, p.display_name as actor_name
+       FROM game_events ge
+       LEFT JOIN profiles p ON p.user_id = ge.actor_id
+       WHERE ge.session_id = $1
+       ORDER BY ge.created_at ASC`,
+      [sessionId]
+    )
+    timeline = events
+  }
+
   return c.json({
     success: true,
     data: {
@@ -84,7 +98,8 @@ games.get('/:sessionId', async (c) => {
       participants,
       timer,
       isAdmin,
-      permissions: userPermissions
+      permissions: userPermissions,
+      timeline
     }
   })
 })

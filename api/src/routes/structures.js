@@ -432,4 +432,33 @@ structures.get('/standings/league/:leagueId/player/:userId', async (c) => {
   return c.json({ success: true, data: { player: memberRows[0], recentGames, trophies } })
 })
 
+// CSV export of standings (authenticated)
+structures.get('/standings/league/:leagueId/export', async (c) => {
+  const user = c.get('user')
+  const leagueId = c.req.param('leagueId')
+  await requireLeagueMember(user.id, leagueId)
+
+  const { rows } = await query(
+    `SELECT p.display_name, lm.games_played, lm.total_wins, lm.total_points,
+            lm.total_winnings, lm.total_bounties
+     FROM league_members lm
+     JOIN profiles p ON p.user_id = lm.user_id
+     WHERE lm.league_id = $1 AND lm.status = 'active' AND lm.games_played > 0
+     ORDER BY lm.total_points DESC, lm.total_wins DESC`,
+    [leagueId]
+  )
+
+  let csv = 'Rank,Player,Games,Wins,Points,Earnings,Bounties\n'
+  rows.forEach((r, i) => {
+    csv += `${i + 1},"${r.display_name}",${r.games_played},${r.total_wins},${r.total_points},${parseFloat(r.total_winnings || 0).toFixed(2)},${r.total_bounties || 0}\n`
+  })
+
+  return new Response(csv, {
+    headers: {
+      'Content-Type': 'text/csv',
+      'Content-Disposition': 'attachment; filename="standings.csv"'
+    }
+  })
+})
+
 export default structures

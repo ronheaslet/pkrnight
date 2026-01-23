@@ -50,6 +50,32 @@ app.get('/api/health', async (c) => {
   }, healthy ? 200 : 503)
 })
 
+// Public standings (no auth required)
+app.get('/api/public/standings/:leagueId', async (c) => {
+  const leagueId = c.req.param('leagueId')
+  const { rows: leagueRows } = await query(
+    'SELECT name, settings FROM leagues WHERE id = $1',
+    [leagueId]
+  )
+  if (leagueRows.length === 0) {
+    return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'League not found' } }, 404)
+  }
+  const settings = leagueRows[0].settings ? (typeof leagueRows[0].settings === 'string' ? JSON.parse(leagueRows[0].settings) : leagueRows[0].settings) : {}
+  if (!settings.public_standings) {
+    return c.json({ success: false, error: { code: 'FORBIDDEN', message: 'Public standings not enabled' } }, 403)
+  }
+  const { rows } = await query(
+    `SELECT lm.games_played, lm.total_wins, lm.total_points,
+            lm.total_winnings, lm.total_bounties, p.display_name
+     FROM league_members lm
+     JOIN profiles p ON p.user_id = lm.user_id
+     WHERE lm.league_id = $1 AND lm.status = 'active' AND lm.games_played > 0
+     ORDER BY lm.total_points DESC, lm.total_wins DESC, lm.total_winnings DESC`,
+    [leagueId]
+  )
+  return c.json({ success: true, data: { standings: rows, leagueName: leagueRows[0].name } })
+})
+
 app.route('/api/auth', auth)
 app.route('/api/leagues', leagues)
 app.route('/api/members', members)

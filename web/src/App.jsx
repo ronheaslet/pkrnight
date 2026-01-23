@@ -14,6 +14,8 @@ import { AdminDashboard } from './pages/AdminDashboard'
 import { Notifications } from './pages/Notifications'
 import { Game } from './pages/Game'
 import { DealerDisplay } from './pages/DealerDisplay'
+import { Profile } from './pages/Profile'
+import { PublicStandings } from './pages/PublicStandings'
 import { Spinner } from './components/Spinner'
 
 function ProtectedRoute({ children }) {
@@ -60,6 +62,7 @@ function App() {
           {/* Public routes */}
           <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
           <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+          <Route path="/standings/:leagueId" element={<PublicStandings />} />
 
           {/* Protected routes with layout */}
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
@@ -72,6 +75,7 @@ function App() {
             <Route path="/leagues/:leagueId/standings" element={<Standings />} />
             <Route path="/leagues/:leagueId/admin" element={<AdminDashboard />} />
             <Route path="/notifications" element={<Notifications />} />
+            <Route path="/profile" element={<Profile />} />
           </Route>
 
           {/* Game page (full screen, no layout) */}

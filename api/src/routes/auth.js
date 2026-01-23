@@ -115,6 +115,22 @@ auth.get('/me', authMiddleware, async (c) => {
   })
 })
 
+auth.patch('/profile', authMiddleware, async (c) => {
+  const user = c.get('user')
+  const { displayName, fullName } = await c.req.json()
+
+  if (!displayName || !displayName.trim()) {
+    throw new ValidationError('Display name is required')
+  }
+
+  await query(
+    'UPDATE profiles SET display_name = $1, full_name = $2 WHERE user_id = $3',
+    [displayName.trim(), fullName || null, user.id]
+  )
+
+  return c.json({ success: true, data: { displayName: displayName.trim(), fullName: fullName || null } })
+})
+
 auth.post('/logout', authMiddleware, async (c) => {
   return c.json({ success: true })
 })

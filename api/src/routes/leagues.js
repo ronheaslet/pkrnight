@@ -140,6 +140,20 @@ leagues.post('/', async (c) => {
       [league.id]
     )
 
+    // Create default role templates
+    const defaultRoles = [
+      { name: 'Dealer', slug: 'dealer', emoji: '\uD83C\uDCCF', permissions: ['pause_timer'], order: 1 },
+      { name: 'Banker', slug: 'banker', emoji: '\uD83D\uDCB0', permissions: ['rebuy_player'], order: 2 },
+      { name: 'Sergeant at Arms', slug: 'sergeant-at-arms', emoji: '\uD83D\uDEE1\uFE0F', permissions: ['pause_timer', 'eliminate_player', 'start_game'], order: 3 }
+    ]
+    for (const role of defaultRoles) {
+      await client.query(
+        `INSERT INTO league_roles (league_id, name, slug, emoji, permissions, display_order)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [league.id, role.name, role.slug, role.emoji, JSON.stringify(role.permissions), role.order]
+      )
+    }
+
     return league
   })
 

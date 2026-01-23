@@ -121,11 +121,35 @@ export function Standings() {
           <Link to={`/leagues/${leagueId}`} className="text-gray-400 hover:text-white text-sm">&larr; {league?.name || 'Dashboard'}</Link>
           <h1 className="text-2xl font-bold text-white mt-1">Standings</h1>
         </div>
-        {isAdmin && (
-          <button onClick={() => setShowSeasonActions(!showSeasonActions)} className="text-sm text-gray-400 hover:text-white">
-            Seasons
-          </button>
-        )}
+        <div className="flex gap-2">
+          {standings.length > 0 && (
+            <button
+              onClick={async () => {
+                const token = localStorage.getItem('pkr_token')
+                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+                const res = await fetch(`${API_URL}/api/structures/standings/league/${leagueId}/export`, {
+                  headers: { Authorization: `Bearer ${token}` }
+                })
+                const blob = await res.blob()
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = 'standings.csv'
+                a.click()
+                URL.revokeObjectURL(url)
+              }}
+              className="text-sm text-gray-400 hover:text-white px-2 py-1"
+              title="Export CSV"
+            >
+              Export
+            </button>
+          )}
+          {isAdmin && (
+            <button onClick={() => setShowSeasonActions(!showSeasonActions)} className="text-sm text-gray-400 hover:text-white px-2 py-1">
+              Seasons
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Season Actions */}

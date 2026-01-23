@@ -976,6 +976,7 @@ function LocationsManager({ leagueId, isAdmin }) {
 function LeagueSettings({ leagueId, isAdmin, league }) {
   const [annualDues, setAnnualDues] = useState('')
   const [guestThreshold, setGuestThreshold] = useState('')
+  const [publicStandings, setPublicStandings] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
@@ -984,6 +985,7 @@ function LeagueSettings({ leagueId, isAdmin, league }) {
       const settings = typeof league.settings === 'string' ? JSON.parse(league.settings) : league.settings
       setAnnualDues(settings.annual_dues || '')
       setGuestThreshold(settings.guest_games_threshold || '')
+      setPublicStandings(!!settings.public_standings)
     }
   }, [league])
 
@@ -997,7 +999,8 @@ function LeagueSettings({ leagueId, isAdmin, league }) {
         settings: {
           ...currentSettings,
           annual_dues: annualDues ? parseFloat(annualDues) : null,
-          guest_games_threshold: guestThreshold ? parseInt(guestThreshold) : null
+          guest_games_threshold: guestThreshold ? parseInt(guestThreshold) : null,
+          public_standings: publicStandings
         }
       })
       setSaved(true)
@@ -1008,6 +1011,8 @@ function LeagueSettings({ leagueId, isAdmin, league }) {
   if (!isAdmin) {
     return <p className="text-gray-400 text-sm">Only admins can modify league settings.</p>
   }
+
+  const publicUrl = `${window.location.origin}/standings/${leagueId}`
 
   return (
     <form onSubmit={handleSave} className="space-y-4">
@@ -1027,6 +1032,25 @@ function LeagueSettings({ leagueId, isAdmin, league }) {
           onChange={e => setGuestThreshold(e.target.value)}
           className="w-full max-w-xs px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none" />
         <p className="text-gray-600 text-xs mt-1">Number of games a guest must play to become eligible for paid membership.</p>
+      </div>
+
+      <div>
+        <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
+          <input type="checkbox" checked={publicStandings} onChange={e => setPublicStandings(e.target.checked)}
+            className="rounded border-gray-600 bg-gray-900 text-green-500" />
+          Enable Public Standings
+        </label>
+        <p className="text-gray-600 text-xs mt-1">Allow anyone with the link to view league standings (no login required).</p>
+        {publicStandings && (
+          <div className="mt-2 flex items-center gap-2">
+            <input type="text" readOnly value={publicUrl}
+              className="flex-1 max-w-md px-3 py-1.5 text-sm bg-gray-900 text-gray-300 rounded border border-gray-700" />
+            <button type="button" onClick={() => navigator.clipboard.writeText(publicUrl)}
+              className="px-3 py-1.5 text-xs bg-gray-700 text-white rounded hover:bg-gray-600">
+              Copy
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-3">
