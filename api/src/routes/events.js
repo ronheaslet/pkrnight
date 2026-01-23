@@ -59,7 +59,7 @@ events.get('/:id', async (c) => {
 events.post('/', async (c) => {
   const user = c.get('user')
   const body = await c.req.json()
-  const { leagueId, title, description, scheduledAt, location, buyInAmount, maxRebuys, rebuyAmount, rebuyCutoffLevel, blindStructureId, payoutStructureId, pointsStructureId } = body
+  const { leagueId, title, description, scheduledAt, location, locationId, buyInAmount, maxRebuys, rebuyAmount, rebuyCutoffLevel, blindStructureId, payoutStructureId, pointsStructureId } = body
 
   if (!leagueId || !title || !scheduledAt) {
     throw new ValidationError('leagueId, title, and scheduledAt are required')
@@ -71,9 +71,9 @@ events.post('/', async (c) => {
   }
 
   const { rows } = await query(
-    `INSERT INTO events (league_id, title, description, scheduled_at, location, buy_in_amount, max_rebuys, rebuy_amount, rebuy_cutoff_level, blind_structure_id, payout_structure_id, points_structure_id, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
-    [leagueId, title, description || null, scheduledAt, location || null, buyInAmount || 0, maxRebuys || 0, rebuyAmount || 0, parseInt(rebuyCutoffLevel) || 0, blindStructureId || null, payoutStructureId || null, pointsStructureId || null, user.id]
+    `INSERT INTO events (league_id, title, description, scheduled_at, location, location_id, location_name, buy_in_amount, max_rebuys, rebuy_amount, rebuy_cutoff_level, blind_structure_id, payout_structure_id, points_structure_id, created_by)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
+    [leagueId, title, description || null, scheduledAt, location || null, locationId || null, location || null, buyInAmount || 0, maxRebuys || 0, rebuyAmount || 0, parseInt(rebuyCutoffLevel) || 0, blindStructureId || null, payoutStructureId || null, pointsStructureId || null, user.id]
   )
 
   return c.json({ success: true, data: { event: rows[0] } }, 201)

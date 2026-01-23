@@ -11,6 +11,7 @@ import { CreateEvent } from './pages/CreateEvent'
 import { Settings } from './pages/Settings'
 import { Standings } from './pages/Standings'
 import { AdminDashboard } from './pages/AdminDashboard'
+import { Notifications } from './pages/Notifications'
 import { Game } from './pages/Game'
 import { DealerDisplay } from './pages/DealerDisplay'
 import { Spinner } from './components/Spinner'
@@ -70,6 +71,7 @@ function App() {
             <Route path="/leagues/:leagueId/settings" element={<Settings />} />
             <Route path="/leagues/:leagueId/standings" element={<Standings />} />
             <Route path="/leagues/:leagueId/admin" element={<AdminDashboard />} />
+            <Route path="/notifications" element={<Notifications />} />
           </Route>
 
           {/* Game page (full screen, no layout) */}

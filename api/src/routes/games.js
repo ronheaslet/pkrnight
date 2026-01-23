@@ -398,6 +398,35 @@ games.post('/:sessionId/eliminate', async (c) => {
     eliminatorUserId
   })
 
+  // Send notifications when game ends
+  if (result.gameOver) {
+    try {
+      const { rows: participants } = await query(
+        `SELECT gp.user_id, gp.finish_position, gp.winnings, gp.points_earned,
+                gs.league_id, e.title as event_title
+         FROM game_participants gp
+         JOIN game_sessions gs ON gs.id = gp.session_id
+         JOIN events e ON e.id = gs.event_id
+         WHERE gp.session_id = $1`,
+        [sessionId]
+      )
+      for (const p of participants) {
+        const winnings = parseFloat(p.winnings || 0)
+        const body = p.finish_position === 1
+          ? `You won! Earned ${p.points_earned || 0} pts${winnings > 0 ? ` and $${winnings.toFixed(0)}` : ''}`
+          : `Finished #${p.finish_position}. Earned ${p.points_earned || 0} pts${winnings > 0 ? ` and $${winnings.toFixed(0)}` : ''}`
+        await query(
+          `INSERT INTO notifications (user_id, league_id, type, title, body, data)
+           VALUES ($1, $2, 'game_result', $3, $4, $5)`,
+          [p.user_id, p.league_id, `Game Complete: ${p.event_title}`, body,
+           JSON.stringify({ finish_position: p.finish_position, points: p.points_earned, winnings })]
+        )
+      }
+    } catch (e) {
+      console.error('Failed to create game notifications:', e.message)
+    }
+  }
+
   return c.json({ success: true, data: result })
 })
 

@@ -15,6 +15,12 @@ import structures from './routes/structures.js'
 import roles from './routes/roles.js'
 import rsvps from './routes/rsvps.js'
 import trophies from './routes/trophies.js'
+import notifications from './routes/notifications.js'
+import chat from './routes/chat.js'
+import dues from './routes/dues.js'
+import pot from './routes/pot.js'
+import seasons from './routes/seasons.js'
+import locations from './routes/locations.js'
 
 const app = new Hono()
 
@@ -53,6 +59,12 @@ app.route('/api/structures', structures)
 app.route('/api/roles', roles)
 app.route('/api/rsvps', rsvps)
 app.route('/api/trophies', trophies)
+app.route('/api/notifications', notifications)
+app.route('/api/chat', chat)
+app.route('/api/dues', dues)
+app.route('/api/pot', pot)
+app.route('/api/seasons', seasons)
+app.route('/api/locations', locations)
 
 app.notFound((c) => {
   return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Route not found' } }, 404)

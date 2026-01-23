@@ -23,12 +23,15 @@ export function Standings() {
   const [standings, setStandings] = useState([])
   const [trophies, setTrophies] = useState([])
   const [league, setLeague] = useState(null)
+  const [seasons, setSeasons] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [activeTab, setActiveTab] = useState('points')
   const [selectedPlayer, setSelectedPlayer] = useState(null)
   const [playerDetail, setPlayerDetail] = useState(null)
   const [playerLoading, setPlayerLoading] = useState(false)
+  const [showSeasonActions, setShowSeasonActions] = useState(false)
+  const [seasonLoading, setSeasonLoading] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -36,19 +39,38 @@ export function Standings() {
 
   async function fetchData() {
     try {
-      const [standingsData, leagueData, trophyData] = await Promise.all([
+      const [standingsData, leagueData, trophyData, seasonsData] = await Promise.all([
         api.get(`/api/structures/standings/league/${leagueId}`),
         api.get(`/api/leagues/${leagueId}`),
-        api.get(`/api/trophies/league/${leagueId}`).catch(() => ({ trophies: [] }))
+        api.get(`/api/trophies/league/${leagueId}`).catch(() => ({ trophies: [] })),
+        api.get(`/api/seasons/league/${leagueId}`).catch(() => ({ seasons: [] }))
       ])
       setStandings(standingsData.standings)
       setLeague(leagueData.league)
       setTrophies(trophyData.trophies || [])
+      setSeasons(seasonsData.seasons || [])
     } catch (err) {
       setError(err.message)
     } finally {
       setLoading(false)
     }
+  }
+
+  async function handleCreateSeason() {
+    setSeasonLoading(true)
+    try {
+      await api.post(`/api/seasons/league/${leagueId}`, { year: new Date().getFullYear() })
+      fetchData()
+    } catch (err) { alert(err.message) } finally { setSeasonLoading(false) }
+  }
+
+  async function handleCloseSeason(seasonId) {
+    if (!confirm('Close this season? This will award trophies and reset stats for the new season.')) return
+    setSeasonLoading(true)
+    try {
+      await api.post(`/api/seasons/${seasonId}/close`)
+      fetchData()
+    } catch (err) { alert(err.message) } finally { setSeasonLoading(false) }
   }
 
   async function handlePlayerClick(player) {
@@ -89,12 +111,67 @@ export function Standings() {
     trophyMap[t.user_id].push(t)
   }
 
+  const isAdmin = league?.role === 'owner' || league?.role === 'admin'
+  const activeSeason = seasons.find(s => s.status === 'active')
+
   return (
     <div className="space-y-6">
-      <div>
-        <Link to={`/leagues/${leagueId}`} className="text-gray-400 hover:text-white text-sm">&larr; {league?.name || 'Dashboard'}</Link>
-        <h1 className="text-2xl font-bold text-white mt-1">Standings</h1>
+      <div className="flex items-center justify-between">
+        <div>
+          <Link to={`/leagues/${leagueId}`} className="text-gray-400 hover:text-white text-sm">&larr; {league?.name || 'Dashboard'}</Link>
+          <h1 className="text-2xl font-bold text-white mt-1">Standings</h1>
+        </div>
+        {isAdmin && (
+          <button onClick={() => setShowSeasonActions(!showSeasonActions)} className="text-sm text-gray-400 hover:text-white">
+            Seasons
+          </button>
+        )}
       </div>
+
+      {/* Season Actions */}
+      {showSeasonActions && isAdmin && (
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-3">
+          <h3 className="text-white font-semibold text-sm">Season Management</h3>
+          {activeSeason ? (
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-white text-sm">Current: {activeSeason.name || `${activeSeason.year} Season`}</p>
+                <p className="text-gray-500 text-xs">Started {new Date(activeSeason.started_at).toLocaleDateString()}</p>
+              </div>
+              <button
+                onClick={() => handleCloseSeason(activeSeason.id)}
+                disabled={seasonLoading}
+                className="px-3 py-1.5 text-sm bg-yellow-600 text-white rounded hover:bg-yellow-700 disabled:opacity-50"
+              >
+                {seasonLoading ? 'Processing...' : 'Close Season'}
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <p className="text-gray-400 text-sm">No active season</p>
+              <button
+                onClick={handleCreateSeason}
+                disabled={seasonLoading}
+                className="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+              >
+                {seasonLoading ? 'Creating...' : `Start ${new Date().getFullYear()} Season`}
+              </button>
+            </div>
+          )}
+          {seasons.filter(s => s.status === 'closed').length > 0 && (
+            <div className="pt-2 border-t border-gray-700">
+              <p className="text-xs text-gray-500 mb-1">Past Seasons</p>
+              <div className="flex flex-wrap gap-2">
+                {seasons.filter(s => s.status === 'closed').map(s => (
+                  <span key={s.id} className="px-2 py-0.5 text-xs bg-gray-700 text-gray-300 rounded">
+                    {s.name || s.year}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {standings.length === 0 ? (
         <div className="bg-gray-800 border border-gray-700 rounded-lg p-8 text-center">

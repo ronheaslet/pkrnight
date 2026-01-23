@@ -35,12 +35,12 @@ export function Settings() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-800 rounded-lg p-1">
-        {[['blinds', 'Blinds'], ['payouts', 'Payouts'], ['points', 'Points'], ['roles', 'Roles']].map(([key, label]) => (
+      <div className="flex gap-1 bg-gray-800 rounded-lg p-1 overflow-x-auto">
+        {[['blinds', 'Blinds'], ['payouts', 'Payouts'], ['points', 'Points'], ['roles', 'Roles'], ['dues', 'Dues'], ['locations', 'Locations'], ['league', 'League']].map(([key, label]) => (
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`flex-1 px-4 py-2 text-sm rounded-md transition-colors ${tab === key ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'}`}
+            className={`flex-1 px-3 py-2 text-sm rounded-md transition-colors whitespace-nowrap ${tab === key ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'}`}
           >
             {label}
           </button>
@@ -51,6 +51,9 @@ export function Settings() {
       {tab === 'payouts' && <PayoutStructures leagueId={leagueId} isAdmin={isAdmin} />}
       {tab === 'points' && <PointsStructures leagueId={leagueId} isAdmin={isAdmin} />}
       {tab === 'roles' && <RolesManager leagueId={leagueId} isAdmin={isAdmin} />}
+      {tab === 'dues' && <DuesManager leagueId={leagueId} isAdmin={isAdmin} />}
+      {tab === 'locations' && <LocationsManager leagueId={leagueId} isAdmin={isAdmin} />}
+      {tab === 'league' && <LeagueSettings leagueId={leagueId} isAdmin={isAdmin} league={league} />}
     </div>
   )
 }
@@ -716,6 +719,323 @@ function RoleAssigner({ leagueId, roleId, onDone, onCancel }) {
 
       <button onClick={onDone} className="px-4 py-2 text-sm bg-gray-700 text-white rounded hover:bg-gray-600">Done</button>
     </div>
+  )
+}
+
+// =====================
+// DUES MANAGER
+// =====================
+
+function DuesManager({ leagueId, isAdmin }) {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [showPayment, setShowPayment] = useState(false)
+  const [selectedUser, setSelectedUser] = useState('')
+  const [paymentAmount, setPaymentAmount] = useState('')
+  const [paymentNotes, setPaymentNotes] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => { fetchDues() }, [leagueId])
+
+  async function fetchDues() {
+    try {
+      const result = await api.get(`/api/dues/league/${leagueId}`)
+      setData(result)
+    } catch {} finally { setLoading(false) }
+  }
+
+  async function handleRecordPayment(e) {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      await api.post(`/api/dues/league/${leagueId}`, {
+        userId: selectedUser,
+        amount: parseFloat(paymentAmount),
+        notes: paymentNotes || undefined
+      })
+      setShowPayment(false)
+      setSelectedUser('')
+      setPaymentAmount('')
+      setPaymentNotes('')
+      fetchDues()
+    } catch (err) { alert(err.message) } finally { setSaving(false) }
+  }
+
+  if (loading) return <PageSpinner />
+
+  const { members, payments, annualDues, year } = data || { members: [], payments: [], annualDues: 0, year: new Date().getFullYear() }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-white">Dues - {year}</h2>
+        {isAdmin && (
+          <button onClick={() => setShowPayment(!showPayment)} className="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700">
+            Record Payment
+          </button>
+        )}
+      </div>
+
+      {annualDues > 0 && (
+        <p className="text-gray-400 text-sm">Annual dues: ${annualDues.toFixed(2)}</p>
+      )}
+
+      {showPayment && (
+        <form onSubmit={handleRecordPayment} className="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-3">
+          <select value={selectedUser} onChange={e => setSelectedUser(e.target.value)} required
+            className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 text-sm focus:border-green-500 focus:outline-none">
+            <option value="">Select member...</option>
+            {members.map(m => (
+              <option key={m.user_id} value={m.user_id}>{m.display_name}</option>
+            ))}
+          </select>
+          <input type="number" step="0.01" min="0.01" placeholder="Amount" value={paymentAmount}
+            onChange={e => setPaymentAmount(e.target.value)} required
+            className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 text-sm focus:border-green-500 focus:outline-none" />
+          <input type="text" placeholder="Notes (optional)" value={paymentNotes}
+            onChange={e => setPaymentNotes(e.target.value)}
+            className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 text-sm focus:border-green-500 focus:outline-none" />
+          <div className="flex gap-2">
+            <button type="submit" disabled={saving} className="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50">
+              {saving ? 'Saving...' : 'Record'}
+            </button>
+            <button type="button" onClick={() => setShowPayment(false)} className="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancel</button>
+          </div>
+        </form>
+      )}
+
+      {/* Members dues status */}
+      <div className="bg-gray-800 border border-gray-700 rounded-lg divide-y divide-gray-700">
+        {members.map(m => {
+          const paid = parseFloat(m.total_paid)
+          const isPaid = annualDues > 0 ? paid >= annualDues : paid > 0
+          return (
+            <div key={m.user_id} className="px-4 py-3 flex items-center justify-between">
+              <div>
+                <span className="text-white text-sm">{m.display_name}</span>
+                <span className="text-gray-500 text-xs ml-2">{m.member_type}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                {paid > 0 && <span className="text-gray-400 text-sm">${paid.toFixed(2)}</span>}
+                <span className={`px-2 py-0.5 text-xs rounded-full ${isPaid ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>
+                  {isPaid ? 'Paid' : 'Unpaid'}
+                </span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Payment History */}
+      {payments.length > 0 && (
+        <div>
+          <h3 className="text-sm font-medium text-gray-400 uppercase mb-2">Payment History</h3>
+          <div className="bg-gray-800 border border-gray-700 rounded-lg divide-y divide-gray-700">
+            {payments.slice(0, 10).map(p => (
+              <div key={p.id} className="px-4 py-2 flex items-center justify-between">
+                <div>
+                  <span className="text-white text-sm">{p.display_name}</span>
+                  {p.notes && <span className="text-gray-500 text-xs ml-2">{p.notes}</span>}
+                </div>
+                <div className="text-right">
+                  <span className="text-green-400 text-sm">${parseFloat(p.amount).toFixed(2)}</span>
+                  <p className="text-gray-600 text-xs">{new Date(p.paid_at).toLocaleDateString()}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// =====================
+// LOCATIONS MANAGER
+// =====================
+
+function LocationsManager({ leagueId, isAdmin }) {
+  const [locations, setLocations] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showCreate, setShowCreate] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [name, setName] = useState('')
+  const [address, setAddress] = useState('')
+  const [notes, setNotes] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => { fetchLocations() }, [leagueId])
+
+  async function fetchLocations() {
+    try {
+      const data = await api.get(`/api/locations/league/${leagueId}`)
+      setLocations(data.locations)
+    } catch {} finally { setLoading(false) }
+  }
+
+  function startEdit(loc) {
+    setEditingId(loc.id)
+    setName(loc.name)
+    setAddress(loc.address || '')
+    setNotes(loc.notes || '')
+    setShowCreate(false)
+  }
+
+  function startCreate() {
+    setShowCreate(true)
+    setEditingId(null)
+    setName('')
+    setAddress('')
+    setNotes('')
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      if (editingId) {
+        await api.patch(`/api/locations/${editingId}`, { name, address, notes })
+      } else {
+        await api.post(`/api/locations/league/${leagueId}`, { name, address, notes })
+      }
+      setShowCreate(false)
+      setEditingId(null)
+      setName('')
+      setAddress('')
+      setNotes('')
+      fetchLocations()
+    } catch (err) { alert(err.message) } finally { setSaving(false) }
+  }
+
+  async function handleDelete(id) {
+    if (!confirm('Delete this location?')) return
+    try {
+      await api.delete(`/api/locations/${id}`)
+      fetchLocations()
+    } catch (err) { alert(err.message) }
+  }
+
+  if (loading) return <PageSpinner />
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-white">Saved Locations</h2>
+        <button onClick={startCreate} className="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700">
+          New Location
+        </button>
+      </div>
+
+      {(showCreate || editingId) && (
+        <form onSubmit={handleSubmit} className="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-3">
+          <h3 className="text-white font-semibold text-sm">{editingId ? 'Edit' : 'New'} Location</h3>
+          <input type="text" placeholder="Location Name" value={name} onChange={e => setName(e.target.value)} required
+            className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 text-sm focus:border-green-500 focus:outline-none" />
+          <input type="text" placeholder="Address (optional)" value={address} onChange={e => setAddress(e.target.value)}
+            className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 text-sm focus:border-green-500 focus:outline-none" />
+          <input type="text" placeholder="Notes (optional)" value={notes} onChange={e => setNotes(e.target.value)}
+            className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 text-sm focus:border-green-500 focus:outline-none" />
+          <div className="flex gap-2">
+            <button type="submit" disabled={saving} className="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50">
+              {saving ? 'Saving...' : 'Save'}
+            </button>
+            <button type="button" onClick={() => { setShowCreate(false); setEditingId(null) }} className="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancel</button>
+          </div>
+        </form>
+      )}
+
+      {locations.length === 0 && !showCreate ? (
+        <p className="text-gray-400 text-sm">No saved locations yet.</p>
+      ) : (
+        <div className="space-y-2">
+          {locations.map(loc => (
+            <div key={loc.id} className="bg-gray-800 border border-gray-700 rounded-lg p-4 flex items-center justify-between">
+              <div>
+                <span className="text-white font-medium">{loc.name}</span>
+                {loc.address && <p className="text-gray-500 text-sm">{loc.address}</p>}
+                {loc.notes && <p className="text-gray-600 text-xs mt-0.5">{loc.notes}</p>}
+              </div>
+              {isAdmin && (
+                <div className="flex gap-2">
+                  <button onClick={() => startEdit(loc)} className="text-xs text-blue-400 hover:text-blue-300">Edit</button>
+                  <button onClick={() => handleDelete(loc.id)} className="text-xs text-red-400 hover:text-red-300">Delete</button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// =====================
+// LEAGUE SETTINGS (dues amount, guest threshold)
+// =====================
+
+function LeagueSettings({ leagueId, isAdmin, league }) {
+  const [annualDues, setAnnualDues] = useState('')
+  const [guestThreshold, setGuestThreshold] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    if (league?.settings) {
+      const settings = typeof league.settings === 'string' ? JSON.parse(league.settings) : league.settings
+      setAnnualDues(settings.annual_dues || '')
+      setGuestThreshold(settings.guest_games_threshold || '')
+    }
+  }, [league])
+
+  async function handleSave(e) {
+    e.preventDefault()
+    setSaving(true)
+    setSaved(false)
+    try {
+      const currentSettings = league?.settings ? (typeof league.settings === 'string' ? JSON.parse(league.settings) : league.settings) : {}
+      await api.patch(`/api/leagues/${leagueId}`, {
+        settings: {
+          ...currentSettings,
+          annual_dues: annualDues ? parseFloat(annualDues) : null,
+          guest_games_threshold: guestThreshold ? parseInt(guestThreshold) : null
+        }
+      })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (err) { alert(err.message) } finally { setSaving(false) }
+  }
+
+  if (!isAdmin) {
+    return <p className="text-gray-400 text-sm">Only admins can modify league settings.</p>
+  }
+
+  return (
+    <form onSubmit={handleSave} className="space-y-4">
+      <h2 className="text-lg font-semibold text-white">League Settings</h2>
+
+      <div>
+        <label className="block text-sm text-gray-400 mb-1">Annual Dues Amount ($)</label>
+        <input type="number" step="0.01" min="0" placeholder="0.00" value={annualDues}
+          onChange={e => setAnnualDues(e.target.value)}
+          className="w-full max-w-xs px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none" />
+        <p className="text-gray-600 text-xs mt-1">Set to 0 or leave blank to disable dues tracking.</p>
+      </div>
+
+      <div>
+        <label className="block text-sm text-gray-400 mb-1">Guest Eligibility Threshold</label>
+        <input type="number" min="1" placeholder="e.g. 5" value={guestThreshold}
+          onChange={e => setGuestThreshold(e.target.value)}
+          className="w-full max-w-xs px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none" />
+        <p className="text-gray-600 text-xs mt-1">Number of games a guest must play to become eligible for paid membership.</p>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button type="submit" disabled={saving} className="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50">
+          {saving ? 'Saving...' : 'Save Settings'}
+        </button>
+        {saved && <span className="text-green-400 text-sm">Saved!</span>}
+      </div>
+    </form>
   )
 }
 

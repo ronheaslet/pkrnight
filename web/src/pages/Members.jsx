@@ -40,6 +40,9 @@ export function Members() {
     )
   }
 
+  const settings = league?.settings ? (typeof league.settings === 'string' ? JSON.parse(league.settings) : league.settings) : {}
+  const guestThreshold = settings.guest_games_threshold || 0
+
   return (
     <div className="space-y-6">
       <div>
@@ -48,40 +51,54 @@ export function Members() {
       </div>
 
       <div className="bg-gray-800 border border-gray-700 rounded-lg divide-y divide-gray-700">
-        {members.map((member) => (
-          <div key={member.id} className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-white font-medium">{member.display_name}</span>
-                  <RoleBadge role={member.role} />
-                  {member.member_type === 'guest' && (
-                    <span className="px-2 py-0.5 text-xs rounded-full bg-yellow-900 text-yellow-300">guest</span>
+        {members.map((member) => {
+          const gamesPlayed = member.games_played || 0
+          const isGuest = member.member_type === 'guest'
+          const isEligible = isGuest && guestThreshold > 0 && gamesPlayed >= guestThreshold
+
+          return (
+            <div key={member.id} className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-white font-medium">{member.display_name}</span>
+                    <RoleBadge role={member.role} />
+                    {isGuest && (
+                      <span className="px-2 py-0.5 text-xs rounded-full bg-yellow-900 text-yellow-300">guest</span>
+                    )}
+                    {isEligible && (
+                      <span className="px-2 py-0.5 text-xs rounded-full bg-green-900 text-green-300">Eligible</span>
+                    )}
+                    {member.custom_roles?.map(cr => (
+                      <span key={cr.id} className="px-2 py-0.5 text-xs rounded-full bg-green-900 text-green-300">
+                        {cr.emoji && <span className="mr-0.5">{cr.emoji}</span>}{cr.name}
+                      </span>
+                    ))}
+                  </div>
+                  {member.full_name && (
+                    <p className="text-gray-500 text-sm mt-0.5">{member.full_name}</p>
                   )}
-                  {member.custom_roles?.map(cr => (
-                    <span key={cr.id} className="px-2 py-0.5 text-xs rounded-full bg-green-900 text-green-300">
-                      {cr.emoji && <span className="mr-0.5">{cr.emoji}</span>}{cr.name}
-                    </span>
-                  ))}
+                  {isGuest && guestThreshold > 0 && (
+                    <p className="text-gray-600 text-xs mt-0.5">
+                      {gamesPlayed} of {guestThreshold} games{isEligible ? ' - eligible for membership' : ''}
+                    </p>
+                  )}
                 </div>
-                {member.full_name && (
-                  <p className="text-gray-500 text-sm mt-0.5">{member.full_name}</p>
-                )}
+                <div className="text-right text-sm">
+                  <p className="text-gray-400">{gamesPlayed} games</p>
+                  <p className="text-green-400">{member.total_points || 0} pts</p>
+                </div>
               </div>
-              <div className="text-right text-sm">
-                <p className="text-gray-400">{member.games_played || 0} games</p>
-                <p className="text-green-400">{member.total_points || 0} pts</p>
-              </div>
+              {(member.total_wins > 0 || member.total_winnings > 0) && (
+                <div className="flex gap-4 mt-2 text-xs text-gray-500">
+                  {member.total_wins > 0 && <span>{member.total_wins} wins</span>}
+                  {member.total_winnings > 0 && <span>${parseFloat(member.total_winnings).toFixed(0)} won</span>}
+                  {member.total_bounties > 0 && <span>{member.total_bounties} bounties</span>}
+                </div>
+              )}
             </div>
-            {(member.total_wins > 0 || member.total_winnings > 0) && (
-              <div className="flex gap-4 mt-2 text-xs text-gray-500">
-                {member.total_wins > 0 && <span>{member.total_wins} wins</span>}
-                {member.total_winnings > 0 && <span>${parseFloat(member.total_winnings).toFixed(0)} won</span>}
-                {member.total_bounties > 0 && <span>{member.total_bounties} bounties</span>}
-              </div>
-            )}
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
