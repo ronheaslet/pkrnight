@@ -37,7 +37,29 @@ members.get('/league/:leagueId', async (c) => {
     [leagueId]
   )
 
-  return c.json({ success: true, data: { members: rows } })
+  // Fetch custom role assignments for all members
+  const { rows: assignments } = await query(
+    `SELECT mra.user_id, lr.id as role_id, lr.name, lr.emoji, lr.slug
+     FROM member_role_assignments mra
+     JOIN league_roles lr ON lr.id = mra.role_id
+     WHERE mra.league_id = $1
+     ORDER BY lr.display_order`,
+    [leagueId]
+  )
+
+  // Group assignments by user_id
+  const rolesByUser = {}
+  for (const a of assignments) {
+    if (!rolesByUser[a.user_id]) rolesByUser[a.user_id] = []
+    rolesByUser[a.user_id].push({ id: a.role_id, name: a.name, emoji: a.emoji, slug: a.slug })
+  }
+
+  const membersWithRoles = rows.map(m => ({
+    ...m,
+    custom_roles: rolesByUser[m.user_id] || []
+  }))
+
+  return c.json({ success: true, data: { members: membersWithRoles } })
 })
 
 members.patch('/:memberId', async (c) => {

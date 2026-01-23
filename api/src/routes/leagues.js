@@ -56,7 +56,7 @@ leagues.get('/:id', async (c) => {
   const user = c.get('user')
   const leagueId = c.req.param('id')
 
-  await requireMember(user.id, leagueId)
+  const membership = await requireMember(user.id, leagueId)
 
   const { rows } = await query(
     `SELECT l.*,
@@ -69,7 +69,7 @@ leagues.get('/:id', async (c) => {
     throw new NotFoundError('League')
   }
 
-  return c.json({ success: true, data: { league: rows[0] } })
+  return c.json({ success: true, data: { league: { ...rows[0], role: membership.role } } })
 })
 
 leagues.post('/', async (c) => {
@@ -94,6 +94,50 @@ leagues.post('/', async (c) => {
       `INSERT INTO league_members (league_id, user_id, role, member_type, status)
        VALUES ($1, $2, 'owner', 'paid', 'active')`,
       [league.id, user.id]
+    )
+
+    // Create default blind structure
+    const blindResult = await client.query(
+      `INSERT INTO blind_structures (league_id, name, is_default) VALUES ($1, 'Standard', true) RETURNING id`,
+      [league.id]
+    )
+    const defaultBlinds = [
+      [1, 25, 50, 0, 15], [2, 50, 100, 0, 15], [3, 75, 150, 25, 15], [4, 100, 200, 25, 15],
+      [5, 150, 300, 50, 15], [6, 200, 400, 50, 15], [7, 300, 600, 75, 15], [8, 500, 1000, 100, 15]
+    ]
+    for (const [level, sb, bb, ante, duration] of defaultBlinds) {
+      await client.query(
+        `INSERT INTO blind_levels (structure_id, level_number, small_blind, big_blind, ante, duration_minutes)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [blindResult.rows[0].id, level, sb, bb, ante, duration]
+      )
+    }
+
+    // Create default payout structure
+    const payoutResult = await client.query(
+      `INSERT INTO payout_structures (league_id, name, is_default) VALUES ($1, 'Standard', true) RETURNING id`,
+      [league.id]
+    )
+    const defaultPayouts = [
+      [2, 3, 100, 0, 0, 0, 0],
+      [4, 5, 65, 35, 0, 0, 0],
+      [6, 8, 55, 30, 15, 0, 0],
+      [9, 12, 50, 27, 15, 8, 0],
+      [13, 99, 45, 25, 15, 10, 5]
+    ]
+    for (const [min, max, p1, p2, p3, p4, p5] of defaultPayouts) {
+      await client.query(
+        `INSERT INTO payout_tiers (structure_id, min_players, max_players, first_place_pct, second_place_pct, third_place_pct, fourth_place_pct, fifth_place_pct)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [payoutResult.rows[0].id, min, max, p1, p2, p3, p4, p5]
+      )
+    }
+
+    // Create default points structure
+    await client.query(
+      `INSERT INTO points_structures (league_id, name, is_default, participation_points, bounty_points)
+       VALUES ($1, 'Standard', true, 1, 1)`,
+      [league.id]
     )
 
     return league

@@ -7,6 +7,7 @@ export function useGameState(sessionId) {
   const [participants, setParticipants] = useState([])
   const [timer, setTimer] = useState(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [permissions, setPermissions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -21,6 +22,7 @@ export function useGameState(sessionId) {
         setParticipants(data.participants)
         setTimer(data.timer)
         setIsAdmin(data.isAdmin)
+        setPermissions(data.permissions || [])
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false))
@@ -98,8 +100,9 @@ export function useGameState(sessionId) {
     resumeGame: () => api.post(`/api/games/${sessionId}/resume`),
     eliminate: (eliminatedUserId, eliminatorUserId) =>
       api.post(`/api/games/${sessionId}/eliminate`, { eliminatedUserId, eliminatorUserId }),
-    rebuy: (userId) => api.post(`/api/games/${sessionId}/rebuy`, { userId })
+    rebuy: (userId) => api.post(`/api/games/${sessionId}/rebuy`, { userId }),
+    endGame: () => api.post(`/api/games/${sessionId}/end`)
   }
 
-  return { game, participants, timer, isAdmin, loading, error, connectionState, actions }
+  return { game, participants, timer, isAdmin, permissions, loading, error, connectionState, actions }
 }

@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "migrate": "node scripts/migrate-data.js",
+    "migrate:dry": "node scripts/migrate-data.js --dry-run --verbose"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

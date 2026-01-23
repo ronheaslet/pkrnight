@@ -5,19 +5,42 @@ import { WebSocketServer } from 'ws'
 import { errorHandler } from './middleware/error.js'
 import { handleConnection } from './services/websocket.js'
 import { tickTimers } from './services/timer.js'
+import { query } from './db/client.js'
 import auth from './routes/auth.js'
 import leagues from './routes/leagues.js'
 import members from './routes/members.js'
 import events from './routes/events.js'
 import games from './routes/games.js'
+import structures from './routes/structures.js'
+import roles from './routes/roles.js'
+import rsvps from './routes/rsvps.js'
 
 const app = new Hono()
 
 const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173'
 app.use('*', cors({ origin: corsOrigin }))
 
-app.get('/api/health', (c) => {
-  return c.json({ success: true, status: 'ok', timestamp: Date.now() })
+app.get('/api/health', async (c) => {
+  const checks = {
+    api: 'ok',
+    database: 'unknown'
+  }
+
+  try {
+    await query('SELECT 1')
+    checks.database = 'ok'
+  } catch (e) {
+    checks.database = 'error'
+  }
+
+  const healthy = checks.database === 'ok'
+
+  return c.json({
+    success: healthy,
+    status: healthy ? 'healthy' : 'degraded',
+    checks,
+    timestamp: Date.now()
+  }, healthy ? 200 : 503)
 })
 
 app.route('/api/auth', auth)
@@ -25,6 +48,9 @@ app.route('/api/leagues', leagues)
 app.route('/api/members', members)
 app.route('/api/events', events)
 app.route('/api/games', games)
+app.route('/api/structures', structures)
+app.route('/api/roles', roles)
+app.route('/api/rsvps', rsvps)
 
 app.notFound((c) => {
   return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Route not found' } }, 404)

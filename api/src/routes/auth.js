@@ -5,10 +5,11 @@ import { hashPassword, verifyPassword } from '../services/password.js'
 import { generateToken } from '../middleware/auth.js'
 import { authMiddleware } from '../middleware/auth.js'
 import { ValidationError, ConflictError, UnauthorizedError } from '../lib/errors.js'
+import { rateLimit } from '../middleware/rateLimit.js'
 
 const auth = new Hono()
 
-auth.post('/register', async (c) => {
+auth.post('/register', rateLimit(3, 60000), async (c) => {
   const { email, password, displayName, fullName } = await c.req.json()
 
   if (!email || !email.includes('@')) {
@@ -54,7 +55,7 @@ auth.post('/register', async (c) => {
   }, 201)
 })
 
-auth.post('/login', async (c) => {
+auth.post('/login', rateLimit(5, 60000), async (c) => {
   const { email, password } = await c.req.json()
 
   if (!email || !password) {
@@ -62,7 +63,7 @@ auth.post('/login', async (c) => {
   }
 
   const { rows } = await query(
-    `SELECT u.id, u.email, u.hashed_password, p.display_name, p.full_name, p.avatar_url
+    `SELECT u.id, u.email, u.hashed_password, p.display_name, p.full_name, p.avatar_url, p.is_super_admin
      FROM users u
      LEFT JOIN profiles p ON p.user_id = u.id
      WHERE u.email = $1`,
@@ -89,7 +90,8 @@ auth.post('/login', async (c) => {
         email: user.email,
         displayName: user.display_name,
         fullName: user.full_name,
-        avatarUrl: user.avatar_url
+        avatarUrl: user.avatar_url,
+        isSuperAdmin: user.is_super_admin
       },
       token
     }

@@ -6,12 +6,13 @@ import { initializeTimer, getTimerState, setTimerRunning, destroyTimer } from '.
 import { broadcast } from '../services/websocket.js'
 import { calculatePayouts } from '../services/payout.js'
 import { calculatePoints } from '../services/points.js'
+import { hasPermission, getUserPermissions } from './roles.js'
 
 const games = new Hono()
 
 games.use('*', authMiddleware)
 
-async function requireGameAdmin(userId, sessionId) {
+async function requireGamePermission(userId, sessionId, permission) {
   const { rows } = await query(
     `SELECT gs.league_id, lm.role FROM game_sessions gs
      JOIN league_members lm ON lm.league_id = gs.league_id AND lm.user_id = $1
@@ -19,10 +20,23 @@ async function requireGameAdmin(userId, sessionId) {
     [userId, sessionId]
   )
   if (rows.length === 0) throw new ForbiddenError('Not a member of this league')
-  if (rows[0].role !== 'owner' && rows[0].role !== 'admin') {
-    throw new ForbiddenError('Admin access required')
+
+  const leagueId = rows[0].league_id
+
+  // Owner/admin always has access
+  if (rows[0].role === 'owner' || rows[0].role === 'admin') return rows[0]
+
+  // Check custom role permission
+  const hasPerm = await hasPermission(userId, leagueId, permission)
+  if (!hasPerm) {
+    throw new ForbiddenError(`Permission '${permission}' required`)
   }
+
   return rows[0]
+}
+
+async function requireGameAdmin(userId, sessionId) {
+  return requireGamePermission(userId, sessionId, 'start_game')
 }
 
 // Get game session state
@@ -31,7 +45,7 @@ games.get('/:sessionId', async (c) => {
   const sessionId = c.req.param('sessionId')
 
   const { rows: sessions } = await query(
-    `SELECT gs.*, e.title as event_title, e.buy_in_amount, e.max_rebuys, e.rebuy_amount
+    `SELECT gs.*, e.title as event_title, e.buy_in_amount, e.max_rebuys, e.rebuy_amount, e.rebuy_cutoff_level
      FROM game_sessions gs
      JOIN events e ON e.id = gs.event_id
      WHERE gs.id = $1`,
@@ -60,13 +74,17 @@ games.get('/:sessionId', async (c) => {
 
   const timer = getTimerState(sessionId)
 
+  const userPermissions = await getUserPermissions(user.id, session.league_id)
+  const isAdmin = membership[0].role === 'owner' || membership[0].role === 'admin'
+
   return c.json({
     success: true,
     data: {
       session,
       participants,
       timer,
-      isAdmin: membership[0].role === 'owner' || membership[0].role === 'admin'
+      isAdmin,
+      permissions: userPermissions
     }
   })
 })
@@ -113,6 +131,11 @@ games.post('/:sessionId/register', async (c) => {
   )
   if (sessions.length === 0) throw new NotFoundError('Game session')
 
+  // If registering someone else, need register_player permission
+  if (targetUserId && targetUserId !== user.id) {
+    await requireGamePermission(user.id, sessionId, 'register_player')
+  }
+
   // Verify target is league member
   const { rows: membership } = await query(
     `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2 AND status = 'active'`,
@@ -145,7 +168,7 @@ games.post('/:sessionId/register', async (c) => {
 games.post('/:sessionId/start', async (c) => {
   const user = c.get('user')
   const sessionId = c.req.param('sessionId')
-  await requireGameAdmin(user.id, sessionId)
+  await requireGamePermission(user.id, sessionId, 'start_game')
 
   const { rows: sessions } = await query(
     `SELECT gs.*, e.buy_in_amount, e.blind_structure_id FROM game_sessions gs
@@ -221,7 +244,7 @@ games.post('/:sessionId/start', async (c) => {
 games.post('/:sessionId/pause', async (c) => {
   const user = c.get('user')
   const sessionId = c.req.param('sessionId')
-  await requireGameAdmin(user.id, sessionId)
+  await requireGamePermission(user.id, sessionId, 'pause_timer')
 
   const timer = setTimerRunning(sessionId, false)
   await query(`UPDATE game_sessions SET is_running = false WHERE id = $1`, [sessionId])
@@ -234,7 +257,7 @@ games.post('/:sessionId/pause', async (c) => {
 games.post('/:sessionId/resume', async (c) => {
   const user = c.get('user')
   const sessionId = c.req.param('sessionId')
-  await requireGameAdmin(user.id, sessionId)
+  await requireGamePermission(user.id, sessionId, 'pause_timer')
 
   const timer = setTimerRunning(sessionId, true)
   await query(`UPDATE game_sessions SET is_running = true WHERE id = $1`, [sessionId])
@@ -247,7 +270,7 @@ games.post('/:sessionId/resume', async (c) => {
 games.post('/:sessionId/eliminate', async (c) => {
   const user = c.get('user')
   const sessionId = c.req.param('sessionId')
-  await requireGameAdmin(user.id, sessionId)
+  await requireGamePermission(user.id, sessionId, 'eliminate_player')
 
   const { eliminatedUserId, eliminatorUserId } = await c.req.json()
   if (!eliminatedUserId) throw new ValidationError('eliminatedUserId is required')
@@ -382,18 +405,26 @@ games.post('/:sessionId/eliminate', async (c) => {
 games.post('/:sessionId/rebuy', async (c) => {
   const user = c.get('user')
   const sessionId = c.req.param('sessionId')
-  await requireGameAdmin(user.id, sessionId)
+  await requireGamePermission(user.id, sessionId, 'rebuy_player')
 
   const { userId: rebuyUserId } = await c.req.json()
   if (!rebuyUserId) throw new ValidationError('userId is required')
 
   const { rows: sessions } = await query(
-    `SELECT gs.*, e.max_rebuys, e.rebuy_amount FROM game_sessions gs
+    `SELECT gs.*, e.max_rebuys, e.rebuy_amount, e.rebuy_cutoff_level FROM game_sessions gs
      JOIN events e ON e.id = gs.event_id WHERE gs.id = $1`,
     [sessionId]
   )
   if (sessions.length === 0) throw new NotFoundError('Game session')
   const session = sessions[0]
+
+  // Enforce rebuy cutoff level
+  if (session.rebuy_cutoff_level > 0) {
+    const timerState = getTimerState(sessionId)
+    if (timerState && timerState.currentLevel > session.rebuy_cutoff_level) {
+      throw new ValidationError(`Rebuys are closed after level ${session.rebuy_cutoff_level}`)
+    }
+  }
 
   const { rows: participants } = await query(
     `SELECT * FROM game_participants WHERE session_id = $1 AND user_id = $2`,
@@ -440,7 +471,7 @@ games.post('/:sessionId/rebuy', async (c) => {
 games.post('/:sessionId/end', async (c) => {
   const user = c.get('user')
   const sessionId = c.req.param('sessionId')
-  await requireGameAdmin(user.id, sessionId)
+  await requireGamePermission(user.id, sessionId, 'end_game')
 
   await query(
     `UPDATE game_sessions SET status = 'completed', is_running = false, ended_at = NOW() WHERE id = $1`,

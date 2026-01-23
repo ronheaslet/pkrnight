@@ -1,7 +1,9 @@
 import { AppError } from '../lib/errors.js'
+import { logger } from '../lib/logger.js'
 
 export function errorHandler(err, c) {
   if (err instanceof AppError) {
+    logger.warn('App error', { code: err.code, message: err.message })
     const body = {
       success: false,
       error: {
@@ -15,7 +17,7 @@ export function errorHandler(err, c) {
     return c.json(body, err.statusCode)
   }
 
-  console.error('Unhandled error:', err)
+  logger.error('Unexpected error', { message: err.message, stack: err.stack })
 
   const message = process.env.NODE_ENV === 'production'
     ? 'Internal server error'

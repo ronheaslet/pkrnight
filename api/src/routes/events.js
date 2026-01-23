@@ -37,7 +37,19 @@ events.get('/:id', async (c) => {
   const user = c.get('user')
   const eventId = c.req.param('id')
 
-  const { rows } = await query('SELECT * FROM events WHERE id = $1', [eventId])
+  const { rows } = await query(
+    `SELECT e.*, gs.id as session_id, gs.status as game_status,
+            bs.name as blind_structure_name,
+            ps.name as payout_structure_name,
+            pts.name as points_structure_name
+     FROM events e
+     LEFT JOIN game_sessions gs ON gs.event_id = e.id
+     LEFT JOIN blind_structures bs ON bs.id = e.blind_structure_id
+     LEFT JOIN payout_structures ps ON ps.id = e.payout_structure_id
+     LEFT JOIN points_structures pts ON pts.id = e.points_structure_id
+     WHERE e.id = $1`,
+    [eventId]
+  )
   if (rows.length === 0) throw new NotFoundError('Event')
 
   await requireLeagueMember(user.id, rows[0].league_id)
@@ -47,7 +59,7 @@ events.get('/:id', async (c) => {
 events.post('/', async (c) => {
   const user = c.get('user')
   const body = await c.req.json()
-  const { leagueId, title, description, scheduledAt, location, buyInAmount, maxRebuys, rebuyAmount, blindStructureId, payoutStructureId, pointsStructureId } = body
+  const { leagueId, title, description, scheduledAt, location, buyInAmount, maxRebuys, rebuyAmount, rebuyCutoffLevel, blindStructureId, payoutStructureId, pointsStructureId } = body
 
   if (!leagueId || !title || !scheduledAt) {
     throw new ValidationError('leagueId, title, and scheduledAt are required')
@@ -59,9 +71,9 @@ events.post('/', async (c) => {
   }
 
   const { rows } = await query(
-    `INSERT INTO events (league_id, title, description, scheduled_at, location, buy_in_amount, max_rebuys, rebuy_amount, blind_structure_id, payout_structure_id, points_structure_id, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
-    [leagueId, title, description || null, scheduledAt, location || null, buyInAmount || 0, maxRebuys || 0, rebuyAmount || 0, blindStructureId || null, payoutStructureId || null, pointsStructureId || null, user.id]
+    `INSERT INTO events (league_id, title, description, scheduled_at, location, buy_in_amount, max_rebuys, rebuy_amount, rebuy_cutoff_level, blind_structure_id, payout_structure_id, points_structure_id, created_by)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
+    [leagueId, title, description || null, scheduledAt, location || null, buyInAmount || 0, maxRebuys || 0, rebuyAmount || 0, parseInt(rebuyCutoffLevel) || 0, blindStructureId || null, payoutStructureId || null, pointsStructureId || null, user.id]
   )
 
   return c.json({ success: true, data: { event: rows[0] } }, 201)
@@ -80,7 +92,7 @@ events.patch('/:id', async (c) => {
   }
 
   const body = await c.req.json()
-  const allowedFields = ['title', 'description', 'scheduled_at', 'location', 'buy_in_amount', 'max_rebuys', 'rebuy_amount', 'status']
+  const allowedFields = ['title', 'description', 'scheduled_at', 'location', 'buy_in_amount', 'max_rebuys', 'rebuy_amount', 'rebuy_cutoff_level', 'status']
   const updates = []
   const values = []
   let idx = 1
