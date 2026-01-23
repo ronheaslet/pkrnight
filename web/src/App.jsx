@@ -5,7 +5,8 @@ function App() {
   const [timestamp, setTimestamp] = useState(null)
 
   useEffect(() => {
-    fetch('http://localhost:3000/api/health')
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+    fetch(`${apiUrl}/api/health`)
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
