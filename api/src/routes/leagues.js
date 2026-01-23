@@ -226,6 +226,50 @@ leagues.patch('/:id', async (c) => {
   return c.json({ success: true, data: { league: rows[0] } })
 })
 
+// Admin dashboard stats
+leagues.get('/:id/admin-stats', async (c) => {
+  const user = c.get('user')
+  const leagueId = c.req.param('id')
+  await requireAdmin(user.id, leagueId)
+
+  const [membersResult, eventsResult, gamesResult, activityResult] = await Promise.all([
+    query(
+      `SELECT count(*) as total, count(*) FILTER (WHERE status = 'active') as active,
+              count(*) FILTER (WHERE member_type = 'paid') as paid
+       FROM league_members WHERE league_id = $1`, [leagueId]
+    ),
+    query(
+      `SELECT count(*) as total, count(*) FILTER (WHERE status = 'scheduled') as upcoming,
+              count(*) FILTER (WHERE status = 'completed') as completed
+       FROM events WHERE league_id = $1`, [leagueId]
+    ),
+    query(
+      `SELECT count(*) as total, coalesce(sum(prize_pool), 0) as total_prize_pool,
+              coalesce(sum(player_count), 0) as total_entries, coalesce(sum(total_rebuys), 0) as total_rebuys
+       FROM game_sessions WHERE league_id = $1 AND status = 'completed'`, [leagueId]
+    ),
+    query(
+      `SELECT ge.event_type, ge.event_data, ge.created_at, p.display_name as actor_name, e.title as event_title
+       FROM game_events ge
+       JOIN game_sessions gs ON gs.id = ge.session_id
+       JOIN events e ON e.id = gs.event_id
+       LEFT JOIN profiles p ON p.user_id = ge.actor_id
+       WHERE gs.league_id = $1
+       ORDER BY ge.created_at DESC LIMIT 20`, [leagueId]
+    )
+  ])
+
+  return c.json({
+    success: true,
+    data: {
+      members: membersResult.rows[0],
+      events: eventsResult.rows[0],
+      games: gamesResult.rows[0],
+      activity: activityResult.rows
+    }
+  })
+})
+
 leagues.post('/:id/regenerate-invite', async (c) => {
   const user = c.get('user')
   const leagueId = c.req.param('id')

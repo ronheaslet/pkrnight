@@ -69,6 +69,14 @@ export function LeagueDashboard() {
           </Link>
           {isAdmin && (
             <Link
+              to={`/leagues/${leagueId}/admin`}
+              className="px-4 py-2 text-sm bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors"
+            >
+              Admin
+            </Link>
+          )}
+          {isAdmin && (
+            <Link
               to={`/leagues/${leagueId}/settings`}
               className="px-4 py-2 text-sm bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors"
             >

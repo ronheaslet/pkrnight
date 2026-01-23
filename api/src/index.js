@@ -14,6 +14,7 @@ import games from './routes/games.js'
 import structures from './routes/structures.js'
 import roles from './routes/roles.js'
 import rsvps from './routes/rsvps.js'
+import trophies from './routes/trophies.js'
 
 const app = new Hono()
 
@@ -51,6 +52,7 @@ app.route('/api/games', games)
 app.route('/api/structures', structures)
 app.route('/api/roles', roles)
 app.route('/api/rsvps', rsvps)
+app.route('/api/trophies', trophies)
 
 app.notFound((c) => {
   return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Route not found' } }, 404)

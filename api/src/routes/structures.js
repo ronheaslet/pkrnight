@@ -396,4 +396,40 @@ structures.get('/standings/league/:leagueId', async (c) => {
   return c.json({ success: true, data: { standings: rows } })
 })
 
+// Player detail with recent games
+structures.get('/standings/league/:leagueId/player/:userId', async (c) => {
+  const user = c.get('user')
+  const leagueId = c.req.param('leagueId')
+  const userId = c.req.param('userId')
+  await requireLeagueMember(user.id, leagueId)
+
+  const { rows: memberRows } = await query(
+    `SELECT lm.*, p.display_name, p.avatar_url
+     FROM league_members lm
+     JOIN profiles p ON p.user_id = lm.user_id
+     WHERE lm.league_id = $1 AND lm.user_id = $2`,
+    [leagueId, userId]
+  )
+  if (memberRows.length === 0) throw new NotFoundError('Player')
+
+  const { rows: recentGames } = await query(
+    `SELECT gp.finish_position, gp.winnings, gp.points_earned, gp.bounty_count, gp.rebuy_count,
+            e.title as event_title, gs.started_at, gs.player_count
+     FROM game_participants gp
+     JOIN game_sessions gs ON gs.id = gp.session_id
+     JOIN events e ON e.id = gs.event_id
+     WHERE gp.user_id = $1 AND gs.league_id = $2 AND gs.status = 'completed'
+     ORDER BY gs.started_at DESC
+     LIMIT 10`,
+    [userId, leagueId]
+  )
+
+  const { rows: trophies } = await query(
+    `SELECT * FROM trophies WHERE league_id = $1 AND user_id = $2 ORDER BY season_year DESC`,
+    [leagueId, userId]
+  )
+
+  return c.json({ success: true, data: { player: memberRows[0], recentGames, trophies } })
+})
+
 export default structures

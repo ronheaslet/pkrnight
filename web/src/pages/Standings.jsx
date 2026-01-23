@@ -3,12 +3,32 @@ import { useParams, Link } from 'react-router-dom'
 import { api } from '../api/client'
 import { PageSpinner } from '../components/Spinner'
 
+const TABS = [
+  { key: 'points', label: 'Points', sort: (a, b) => (b.total_points || 0) - (a.total_points || 0), column: 'total_points', format: v => v || 0 },
+  { key: 'bounties', label: 'Bounties', sort: (a, b) => (b.total_bounties || 0) - (a.total_bounties || 0), column: 'total_bounties', format: v => v || 0 },
+  { key: 'earnings', label: 'Earnings', sort: (a, b) => parseFloat(b.total_winnings || 0) - parseFloat(a.total_winnings || 0), column: 'total_winnings', format: v => parseFloat(v) > 0 ? `$${parseFloat(v).toFixed(0)}` : '-' },
+  { key: 'games', label: 'Games', sort: (a, b) => (b.games_played || 0) - (a.games_played || 0), column: 'games_played', format: v => v || 0 }
+]
+
+const TROPHY_LABELS = {
+  points_champion: { icon: '🏆', label: 'Points Champion' },
+  bounty_king: { icon: '💀', label: 'Bounty King' },
+  money_maker: { icon: '💰', label: 'Money Maker' },
+  most_wins: { icon: '👑', label: 'Most Wins' },
+  iron_player: { icon: '🎯', label: 'Iron Player' }
+}
+
 export function Standings() {
   const { leagueId } = useParams()
   const [standings, setStandings] = useState([])
+  const [trophies, setTrophies] = useState([])
   const [league, setLeague] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [activeTab, setActiveTab] = useState('points')
+  const [selectedPlayer, setSelectedPlayer] = useState(null)
+  const [playerDetail, setPlayerDetail] = useState(null)
+  const [playerLoading, setPlayerLoading] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -16,17 +36,37 @@ export function Standings() {
 
   async function fetchData() {
     try {
-      const [standingsData, leagueData] = await Promise.all([
+      const [standingsData, leagueData, trophyData] = await Promise.all([
         api.get(`/api/structures/standings/league/${leagueId}`),
-        api.get(`/api/leagues/${leagueId}`)
+        api.get(`/api/leagues/${leagueId}`),
+        api.get(`/api/trophies/league/${leagueId}`).catch(() => ({ trophies: [] }))
       ])
       setStandings(standingsData.standings)
       setLeague(leagueData.league)
+      setTrophies(trophyData.trophies || [])
     } catch (err) {
       setError(err.message)
     } finally {
       setLoading(false)
     }
+  }
+
+  async function handlePlayerClick(player) {
+    setSelectedPlayer(player)
+    setPlayerLoading(true)
+    try {
+      const data = await api.get(`/api/structures/standings/league/${leagueId}/player/${player.user_id}`)
+      setPlayerDetail(data)
+    } catch {
+      setPlayerDetail(null)
+    } finally {
+      setPlayerLoading(false)
+    }
+  }
+
+  function closeModal() {
+    setSelectedPlayer(null)
+    setPlayerDetail(null)
   }
 
   if (loading) return <PageSpinner />
@@ -38,6 +78,15 @@ export function Standings() {
         <Link to={`/leagues/${leagueId}`} className="text-green-400 hover:underline">Back to Dashboard</Link>
       </div>
     )
+  }
+
+  const tab = TABS.find(t => t.key === activeTab)
+  const sorted = [...standings].sort(tab.sort)
+
+  const trophyMap = {}
+  for (const t of trophies) {
+    if (!trophyMap[t.user_id]) trophyMap[t.user_id] = []
+    trophyMap[t.user_id].push(t)
   }
 
   return (
@@ -53,49 +102,167 @@ export function Standings() {
           <p className="text-gray-500 text-sm mt-1">Standings will appear after the first completed game.</p>
         </div>
       ) : (
-        <div className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
-          {/* Header */}
-          <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-gray-700/50 text-xs text-gray-400 uppercase">
-            <span className="col-span-1">#</span>
-            <span className="col-span-3">Player</span>
-            <span className="col-span-2 text-center">Points</span>
-            <span className="col-span-1 text-center hidden sm:block">GP</span>
-            <span className="col-span-1 text-center hidden sm:block">Wins</span>
-            <span className="col-span-2 text-center hidden sm:block">Winnings</span>
-            <span className="col-span-2 text-center hidden sm:block">KOs</span>
+        <>
+          {/* Tabs */}
+          <div className="flex gap-1 bg-gray-800 border border-gray-700 rounded-lg p-1">
+            {TABS.map(t => (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className={`flex-1 px-3 py-2 text-sm font-medium rounded transition-colors ${
+                  activeTab === t.key ? 'bg-green-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
 
-          {/* Rows */}
-          {standings.map((player, idx) => (
-            <div key={player.user_id} className={`grid grid-cols-12 gap-2 px-4 py-3 items-center border-t border-gray-700 ${idx < 3 ? 'bg-gray-800' : ''}`}>
-              <span className="col-span-1">
-                {idx === 0 && <span className="text-yellow-400 font-bold">1</span>}
-                {idx === 1 && <span className="text-gray-300 font-bold">2</span>}
-                {idx === 2 && <span className="text-amber-600 font-bold">3</span>}
-                {idx > 2 && <span className="text-gray-500">{idx + 1}</span>}
-              </span>
-              <span className="col-span-3 text-white font-medium truncate">{player.display_name}</span>
-              <span className="col-span-2 text-center text-green-400 font-semibold">{player.total_points}</span>
-              <span className="col-span-1 text-center text-gray-400 hidden sm:block">{player.games_played}</span>
-              <span className="col-span-1 text-center text-gray-400 hidden sm:block">{player.total_wins}</span>
-              <span className="col-span-2 text-center text-gray-400 hidden sm:block">
-                {parseFloat(player.total_winnings) > 0 ? `$${parseFloat(player.total_winnings).toFixed(0)}` : '-'}
-              </span>
-              <span className="col-span-2 text-center text-gray-400 hidden sm:block">{player.total_bounties || 0}</span>
+          {/* Table */}
+          <div className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+            <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-gray-700/50 text-xs text-gray-400 uppercase">
+              <span className="col-span-1">#</span>
+              <span className="col-span-4">Player</span>
+              <span className="col-span-2 text-center">{tab.label}</span>
+              <span className="col-span-1 text-center hidden sm:block">GP</span>
+              <span className="col-span-1 text-center hidden sm:block">Wins</span>
+              <span className="col-span-1 text-center hidden sm:block">Pts</span>
+              <span className="col-span-2 text-center hidden sm:block">KOs</span>
             </div>
-          ))}
-        </div>
+
+            {sorted.map((player, idx) => (
+              <div
+                key={player.user_id}
+                onClick={() => handlePlayerClick(player)}
+                className={`grid grid-cols-12 gap-2 px-4 py-3 items-center border-t border-gray-700 cursor-pointer hover:bg-gray-700/50 transition-colors ${idx < 3 ? 'bg-gray-800' : ''}`}
+              >
+                <span className="col-span-1">
+                  {idx === 0 && <span className="text-yellow-400 font-bold">1</span>}
+                  {idx === 1 && <span className="text-gray-300 font-bold">2</span>}
+                  {idx === 2 && <span className="text-amber-600 font-bold">3</span>}
+                  {idx > 2 && <span className="text-gray-500">{idx + 1}</span>}
+                </span>
+                <span className="col-span-4 flex items-center gap-2">
+                  <span className="text-white font-medium truncate">{player.display_name}</span>
+                  {trophyMap[player.user_id] && (
+                    <span className="flex gap-0.5">
+                      {trophyMap[player.user_id].slice(0, 3).map(t => (
+                        <span key={t.id} title={TROPHY_LABELS[t.trophy_type]?.label || t.trophy_type} className="text-xs">
+                          {TROPHY_LABELS[t.trophy_type]?.icon || '🏅'}
+                        </span>
+                      ))}
+                    </span>
+                  )}
+                </span>
+                <span className="col-span-2 text-center text-green-400 font-semibold">{tab.format(player[tab.column])}</span>
+                <span className="col-span-1 text-center text-gray-400 hidden sm:block">{player.games_played}</span>
+                <span className="col-span-1 text-center text-gray-400 hidden sm:block">{player.total_wins}</span>
+                <span className="col-span-1 text-center text-gray-400 hidden sm:block">{player.total_points}</span>
+                <span className="col-span-2 text-center text-gray-400 hidden sm:block">{player.total_bounties || 0}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Summary Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <StatCard label="Total Games" value={Math.max(...standings.map(s => s.games_played))} />
+            <StatCard label="Players" value={standings.length} />
+            <StatCard label="Total Prize Money" value={`$${standings.reduce((sum, s) => sum + parseFloat(s.total_winnings || 0), 0).toFixed(0)}`} />
+            <StatCard label="Total KOs" value={standings.reduce((sum, s) => sum + (s.total_bounties || 0), 0)} />
+          </div>
+        </>
       )}
 
-      {/* Summary Stats */}
-      {standings.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <StatCard label="Total Games" value={Math.max(...standings.map(s => s.games_played))} />
-          <StatCard label="Players" value={standings.length} />
-          <StatCard label="Total Prize Money" value={`$${standings.reduce((sum, s) => sum + parseFloat(s.total_winnings || 0), 0).toFixed(0)}`} />
-          <StatCard label="Total KOs" value={standings.reduce((sum, s) => sum + (s.total_bounties || 0), 0)} />
-        </div>
+      {/* Player Detail Modal */}
+      {selectedPlayer && (
+        <PlayerModal
+          player={selectedPlayer}
+          detail={playerDetail}
+          loading={playerLoading}
+          trophies={trophyMap[selectedPlayer.user_id] || []}
+          onClose={closeModal}
+        />
       )}
+    </div>
+  )
+}
+
+function PlayerModal({ player, detail, loading, trophies, onClose }) {
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-gray-800 border border-gray-700 rounded-lg w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center p-4 border-b border-gray-700">
+          <h2 className="text-xl font-bold text-white">{player.display_name}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl">&times;</button>
+        </div>
+
+        {loading ? (
+          <div className="p-8 text-center text-gray-400">Loading...</div>
+        ) : (
+          <div className="p-4 space-y-4">
+            <div className="grid grid-cols-3 gap-3">
+              <MiniStat label="Points" value={player.total_points} />
+              <MiniStat label="Games" value={player.games_played} />
+              <MiniStat label="Wins" value={player.total_wins} />
+              <MiniStat label="Earnings" value={parseFloat(player.total_winnings) > 0 ? `$${parseFloat(player.total_winnings).toFixed(0)}` : '-'} />
+              <MiniStat label="Bounties" value={player.total_bounties || 0} />
+              <MiniStat label="Win Rate" value={player.games_played > 0 ? `${Math.round((player.total_wins / player.games_played) * 100)}%` : '-'} />
+            </div>
+
+            {trophies.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-400 uppercase mb-2">Trophy Case</h3>
+                <div className="flex flex-wrap gap-2">
+                  {trophies.map(t => (
+                    <div key={t.id} className="flex items-center gap-1.5 bg-gray-700 px-3 py-1.5 rounded-full">
+                      <span>{TROPHY_LABELS[t.trophy_type]?.icon || '🏅'}</span>
+                      <span className="text-sm text-white">{TROPHY_LABELS[t.trophy_type]?.label || t.trophy_type}</span>
+                      <span className="text-xs text-gray-400">{t.season_year}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {detail?.recentGames && detail.recentGames.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-400 uppercase mb-2">Recent Games</h3>
+                <div className="bg-gray-900 rounded-lg overflow-hidden">
+                  <div className="grid grid-cols-12 gap-1 px-3 py-2 text-xs text-gray-500 uppercase">
+                    <span className="col-span-4">Event</span>
+                    <span className="col-span-2 text-center">Place</span>
+                    <span className="col-span-2 text-center">Pts</span>
+                    <span className="col-span-2 text-center">KOs</span>
+                    <span className="col-span-2 text-center">Won</span>
+                  </div>
+                  {detail.recentGames.map((game, i) => (
+                    <div key={i} className="grid grid-cols-12 gap-1 px-3 py-2 text-sm border-t border-gray-800">
+                      <span className="col-span-4 text-white truncate">{game.event_title}</span>
+                      <span className={`col-span-2 text-center ${game.finish_position === 1 ? 'text-yellow-400 font-bold' : 'text-gray-300'}`}>
+                        {game.finish_position ? `#${game.finish_position}` : '-'}
+                      </span>
+                      <span className="col-span-2 text-center text-gray-400">{game.points_earned || 0}</span>
+                      <span className="col-span-2 text-center text-gray-400">{game.bounty_count || 0}</span>
+                      <span className="col-span-2 text-center text-gray-400">
+                        {parseFloat(game.winnings) > 0 ? `$${parseFloat(game.winnings).toFixed(0)}` : '-'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function MiniStat({ label, value }) {
+  return (
+    <div className="bg-gray-900 rounded-lg p-3 text-center">
+      <p className="text-lg font-bold text-white">{value}</p>
+      <p className="text-xs text-gray-400">{label}</p>
     </div>
   )
 }
