@@ -17,6 +17,7 @@ import { DealerDisplay } from './pages/DealerDisplay'
 import { Profile } from './pages/Profile'
 import { PublicStandings } from './pages/PublicStandings'
 import { Spinner } from './components/Spinner'
+import { NotificationToast } from './components/NotificationToast'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -85,6 +86,7 @@ function App() {
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <NotificationToast />
       </AuthProvider>
     </BrowserRouter>
   )

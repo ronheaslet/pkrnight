@@ -93,6 +93,20 @@ export function EventDetail() {
     navigate(`/games/${session.id}`)
   }
 
+  async function handleDeleteEvent() {
+    if (!confirm('Are you sure you want to delete this event? This cannot be undone.')) return
+    setActionLoading(true)
+    setActionError('')
+    try {
+      await api.delete(`/api/events/${eventId}`)
+      navigate(`/leagues/${leagueId}`)
+    } catch (err) {
+      setActionError(err.message)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   if (loading) return <PageSpinner />
 
   if (error) {
@@ -276,6 +290,17 @@ export function EventDetail() {
             className="px-5 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors"
           >
             View Results
+          </button>
+        )}
+
+        {/* Admin: Delete event (only if no completed game) */}
+        {isAdmin && !isCompleted && (
+          <button
+            onClick={handleDeleteEvent}
+            disabled={actionLoading}
+            className="px-5 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 transition-colors"
+          >
+            {actionLoading ? 'Deleting...' : 'Delete Event'}
           </button>
         )}
       </div>

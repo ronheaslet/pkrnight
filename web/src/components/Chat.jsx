@@ -4,13 +4,13 @@ import { useAuth } from '../contexts/AuthContext'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
-export function Chat({ leagueId }) {
+export function Chat({ leagueId, alwaysExpanded = false, onClose }) {
   const { user } = useAuth()
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(alwaysExpanded)
   const messagesEndRef = useRef(null)
   const wsRef = useRef(null)
 
@@ -54,6 +54,12 @@ export function Chat({ leagueId }) {
       const data = JSON.parse(event.data)
       if (data.type === 'CHAT_MESSAGE') {
         setMessages(prev => [...prev, data.message])
+        if (data.message.user_id !== user?.id && window.__pkrToast) {
+          window.__pkrToast({
+            title: data.message.display_name,
+            body: data.message.message
+          })
+        }
       }
     }
 
@@ -83,7 +89,7 @@ export function Chat({ leagueId }) {
     }
   }
 
-  if (!expanded) {
+  if (!expanded && !alwaysExpanded) {
     return (
       <button
         onClick={() => setExpanded(true)}
@@ -99,8 +105,11 @@ export function Chat({ leagueId }) {
     <div className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 border-b border-gray-700">
         <span className="text-white text-sm font-medium">League Chat</span>
-        <button onClick={() => setExpanded(false)} className="text-gray-400 hover:text-white text-sm">
-          Minimize
+        <button
+          onClick={() => { if (onClose) onClose(); else setExpanded(false) }}
+          className="text-gray-400 hover:text-white text-sm"
+        >
+          {onClose ? 'Close' : 'Minimize'}
         </button>
       </div>
 

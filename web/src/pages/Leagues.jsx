@@ -9,10 +9,24 @@ export function Leagues() {
   const [error, setError] = useState(null)
   const [showCreate, setShowCreate] = useState(false)
   const [showJoin, setShowJoin] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [recentNotifications, setRecentNotifications] = useState([])
 
   useEffect(() => {
     fetchLeagues()
+    fetchActivity()
   }, [])
+
+  async function fetchActivity() {
+    try {
+      const [countData, notifData] = await Promise.all([
+        api.get('/api/notifications/count'),
+        api.get('/api/notifications?limit=3')
+      ])
+      setUnreadCount(countData.count)
+      setRecentNotifications(notifData.notifications.filter(n => !n.read))
+    } catch {}
+  }
 
   async function fetchLeagues() {
     try {
@@ -60,6 +74,33 @@ export function Leagues() {
 
       {showJoin && <JoinLeagueForm onDone={() => { setShowJoin(false); fetchLeagues() }} onCancel={() => setShowJoin(false)} />}
       {showCreate && <CreateLeagueForm onDone={() => { setShowCreate(false); fetchLeagues() }} onCancel={() => setShowCreate(false)} />}
+
+      {/* Activity Banner */}
+      {(unreadCount > 0 || recentNotifications.length > 0) && (
+        <Link
+          to="/notifications"
+          className="bg-gray-800 border border-gray-700 rounded-lg p-4 flex items-center justify-between hover:border-green-600 transition-colors block"
+        >
+          <div className="flex items-center gap-3">
+            <div className="bg-green-900/50 p-2 rounded-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-white text-sm font-medium">
+                {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'Recent activity'}
+              </p>
+              {recentNotifications.length > 0 && (
+                <p className="text-gray-400 text-xs mt-0.5 truncate max-w-[200px] sm:max-w-none">
+                  {recentNotifications[0].title}
+                </p>
+              )}
+            </div>
+          </div>
+          <span className="text-gray-400 text-sm">View all &rarr;</span>
+        </Link>
+      )}
 
       {leagues.length === 0 ? (
         <div className="bg-gray-800 border border-gray-700 rounded-lg p-8 text-center">

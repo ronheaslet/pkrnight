@@ -116,4 +116,36 @@ events.patch('/:id', async (c) => {
   return c.json({ success: true, data: { event: rows[0] } })
 })
 
+// Delete event
+events.delete('/:id', async (c) => {
+  const user = c.get('user')
+  const eventId = c.req.param('id')
+
+  const { rows: eventRows } = await query('SELECT * FROM events WHERE id = $1', [eventId])
+  if (eventRows.length === 0) throw new NotFoundError('Event')
+
+  const membership = await requireLeagueMember(user.id, eventRows[0].league_id)
+  if (membership.role !== 'owner' && membership.role !== 'admin') {
+    throw new ForbiddenError('Admin access required')
+  }
+
+  // Don't allow deleting events with completed games
+  const { rows: games } = await query(
+    `SELECT id FROM game_sessions WHERE event_id = $1 AND status = 'completed'`,
+    [eventId]
+  )
+  if (games.length > 0) {
+    throw new ForbiddenError('Cannot delete event with completed games')
+  }
+
+  // Clean up related records
+  await query(`DELETE FROM game_participants WHERE session_id IN (SELECT id FROM game_sessions WHERE event_id = $1)`, [eventId])
+  await query(`DELETE FROM game_events WHERE session_id IN (SELECT id FROM game_sessions WHERE event_id = $1)`, [eventId])
+  await query(`DELETE FROM game_sessions WHERE event_id = $1`, [eventId])
+  await query(`DELETE FROM event_rsvps WHERE event_id = $1`, [eventId])
+  await query(`DELETE FROM events WHERE id = $1`, [eventId])
+
+  return c.json({ success: true })
+})
+
 export default events

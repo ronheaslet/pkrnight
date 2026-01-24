@@ -5,6 +5,7 @@ import { useSounds } from '../hooks/useSounds'
 import { Timer } from '../components/Timer'
 import { PlayerList } from '../components/PlayerList'
 import { GameControls } from '../components/GameControls'
+import { GameChatPanel } from '../components/GameChatPanel'
 import { Spinner } from '../components/Spinner'
 
 export function Game() {
@@ -132,6 +133,9 @@ export function Game() {
           </div>
         )}
       </div>
+
+      {/* Chat & Notifications */}
+      <GameChatPanel leagueId={game?.league_id} />
     </div>
   )
 }
