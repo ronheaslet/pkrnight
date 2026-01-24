@@ -89,6 +89,19 @@ export function EventDetail() {
     }
   }
 
+  async function handleUnregister() {
+    setActionLoading(true)
+    setActionError('')
+    try {
+      await api.delete(`/api/games/${session.id}/register`)
+      await fetchData()
+    } catch (err) {
+      setActionError(err.message)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   async function handleEnterGame() {
     navigate(`/games/${session.id}`)
   }
@@ -124,7 +137,8 @@ export function EventDetail() {
   const isRunning = session?.status === 'running' || session?.status === 'paused'
   const isCompleted = session?.status === 'completed'
 
-  const myRsvp = rsvps.find(r => r.user_id === user?.id)
+  const rawRsvp = rsvps.find(r => r.user_id === user?.id)
+  const myRsvp = rawRsvp || (isRegistered ? { status: 'going' } : null)
   const goingList = rsvps.filter(r => r.status === 'going')
   const maybeList = rsvps.filter(r => r.status === 'maybe')
   const notGoingList = rsvps.filter(r => r.status === 'not_going')
@@ -266,11 +280,20 @@ export function EventDetail() {
           </button>
         )}
 
-        {/* Registered indicator */}
+        {/* Registered indicator + unregister */}
         {isRegistered && isPending && (
-          <span className="px-5 py-2 bg-green-900/50 text-green-300 rounded border border-green-700">
-            Registered
-          </span>
+          <>
+            <span className="px-5 py-2 bg-green-900/50 text-green-300 rounded border border-green-700">
+              Registered
+            </span>
+            <button
+              onClick={handleUnregister}
+              disabled={actionLoading}
+              className="px-5 py-2 text-sm text-gray-400 hover:text-red-400 transition-colors"
+            >
+              Unregister
+            </button>
+          </>
         )}
 
         {/* Enter game */}

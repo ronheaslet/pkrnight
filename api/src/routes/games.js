@@ -176,7 +176,51 @@ games.post('/:sessionId/register', async (c) => {
     [sessionId]
   )
 
+  // Auto-RSVP "going" when registering for game
+  await query(
+    `INSERT INTO event_rsvps (event_id, user_id, status)
+     VALUES ($1, $2, 'going')
+     ON CONFLICT (event_id, user_id) DO UPDATE SET status = 'going', updated_at = NOW()`,
+    [sessions[0].event_id, registerUserId]
+  )
+
   return c.json({ success: true, data: { participant: rows[0] } }, 201)
+})
+
+// Unregister participant
+games.delete('/:sessionId/register', async (c) => {
+  const user = c.get('user')
+  const sessionId = c.req.param('sessionId')
+
+  const { rows: sessions } = await query(
+    `SELECT gs.*, e.buy_in_amount FROM game_sessions gs JOIN events e ON e.id = gs.event_id WHERE gs.id = $1`,
+    [sessionId]
+  )
+  if (sessions.length === 0) throw new NotFoundError('Game session')
+
+  if (sessions[0].status !== 'pending') {
+    throw new ValidationError('Can only unregister from pending games')
+  }
+
+  const { rows } = await query(
+    `DELETE FROM game_participants WHERE session_id = $1 AND user_id = $2 AND status = 'registered' RETURNING *`,
+    [sessionId, user.id]
+  )
+
+  if (rows.length > 0) {
+    await query(
+      `UPDATE game_sessions SET player_count = GREATEST(player_count - 1, 0) WHERE id = $1`,
+      [sessionId]
+    )
+
+    // Remove RSVP when unregistering
+    await query(
+      `DELETE FROM event_rsvps WHERE event_id = $1 AND user_id = $2`,
+      [sessions[0].event_id, user.id]
+    )
+  }
+
+  return c.json({ success: true })
 })
 
 // Start game
