@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { PageSpinner } from '../components/Spinner'
 
 export function Settings() {
   const { leagueId } = useParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [league, setLeague] = useState(null)
-  const [tab, setTab] = useState('blinds')
+  const [tab, setTab] = useState(searchParams.get('tab') || 'blinds')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -39,7 +40,7 @@ export function Settings() {
         {[['blinds', 'Blinds'], ['payouts', 'Payouts'], ['points', 'Points'], ['roles', 'Roles'], ['dues', 'Dues'], ['locations', 'Locations'], ['league', 'League']].map(([key, label]) => (
           <button
             key={key}
-            onClick={() => setTab(key)}
+            onClick={() => { setTab(key); setSearchParams({ tab: key }) }}
             className={`flex-1 px-3 py-2 text-sm rounded-md transition-colors whitespace-nowrap ${tab === key ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'}`}
           >
             {label}
