@@ -10,7 +10,9 @@ export function Layout() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [showDropdown, setShowDropdown] = useState(false)
   const [notifications, setNotifications] = useState([])
+  const [showUserMenu, setShowUserMenu] = useState(false)
   const dropdownRef = useRef(null)
+  const userMenuRef = useRef(null)
 
   // Extract leagueId from URL if we're in a league context
   const leagueMatch = location.pathname.match(/\/leagues\/([^/]+)/)
@@ -28,6 +30,9 @@ export function Layout() {
     function handleClickOutside(e) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setShowDropdown(false)
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setShowUserMenu(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -75,21 +80,30 @@ export function Layout() {
   const isActive = (path) => location.pathname === path
   const isActivePrefix = (prefix) => location.pathname.startsWith(prefix)
 
+  const initials = user?.displayName
+    ?.split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .substring(0, 2) || 'U'
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pkr-green-800 to-pkr-green-900 pb-20 md:pb-0">
-      {/* Top nav */}
-      <nav className="bg-pkr-green-900/80 border-b border-pkr-green-700/50 backdrop-blur-sm">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-          <Link to="/" className="text-xl font-display font-bold text-pkr-gold-400 hover:text-pkr-gold-300 transition-colors">
-            PKR Night
+    <div className="min-h-screen pb-20 md:pb-0">
+      {/* Header */}
+      <header className="sticky top-0 z-40 bg-felt-dark/95 backdrop-blur-lg border-b border-white/10">
+        <div className="flex items-center justify-between px-4 py-3 max-w-5xl mx-auto">
+          <Link to="/" className="flex items-center gap-2">
+            <span className="text-2xl">🃏</span>
+            <span className="font-display text-lg text-gold">PKR Night</span>
           </Link>
+
           {user && (
-            <div className="flex items-center gap-4">
-              {/* Notification Bell - desktop only */}
-              <div className="relative hidden md:block" ref={dropdownRef}>
+            <div className="flex items-center gap-3">
+              {/* Notification Bell */}
+              <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={toggleDropdown}
-                  className="relative text-pkr-gold-300/70 hover:text-pkr-gold-300 transition-colors p-1"
+                  className="relative text-white/60 hover:text-white transition-colors p-1"
                   title="Notifications"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -103,19 +117,19 @@ export function Layout() {
                 </button>
 
                 {showDropdown && (
-                  <div className="absolute right-0 mt-2 w-80 bg-pkr-green-800 border border-pkr-green-700 rounded-lg shadow-xl z-50">
-                    <div className="flex items-center justify-between px-4 py-2 border-b border-pkr-green-700">
+                  <div className="absolute right-0 mt-2 w-80 bg-felt-dark border border-white/20 rounded-xl shadow-xl z-50">
+                    <div className="flex items-center justify-between px-4 py-2 border-b border-white/10">
                       <span className="text-white text-sm font-medium">Notifications</span>
                       <div className="flex gap-2">
                         {unreadCount > 0 && (
-                          <button onClick={markAllRead} className="text-xs text-pkr-gold-400 hover:text-pkr-gold-300">
+                          <button onClick={markAllRead} className="text-xs text-gold hover:text-gold-dark">
                             Mark all read
                           </button>
                         )}
                         <Link
                           to="/notifications"
                           onClick={() => setShowDropdown(false)}
-                          className="text-xs text-pkr-gold-300/60 hover:text-white"
+                          className="text-xs text-white/40 hover:text-white"
                         >
                           View all
                         </Link>
@@ -123,17 +137,17 @@ export function Layout() {
                     </div>
                     <div className="max-h-64 overflow-y-auto">
                       {notifications.length === 0 ? (
-                        <p className="text-pkr-gold-300/40 text-sm text-center py-4">No notifications</p>
+                        <p className="text-white/40 text-sm text-center py-4">No notifications</p>
                       ) : (
                         notifications.map(n => (
                           <div
                             key={n.id}
                             onClick={() => !n.read && markAsRead(n.id)}
-                            className={`px-4 py-3 border-b border-pkr-green-700 last:border-0 cursor-pointer hover:bg-pkr-green-700/50 ${!n.read ? 'bg-pkr-green-700/30' : ''}`}
+                            className={`px-4 py-3 border-b border-white/10 last:border-0 cursor-pointer hover:bg-white/5 ${!n.read ? 'bg-white/5' : ''}`}
                           >
-                            <p className={`text-sm ${!n.read ? 'text-white font-medium' : 'text-pkr-gold-300/60'}`}>{n.title}</p>
-                            {n.body && <p className="text-xs text-pkr-gold-300/40 mt-0.5">{n.body}</p>}
-                            <p className="text-xs text-pkr-gold-300/30 mt-1">{formatTimeAgo(n.created_at)}</p>
+                            <p className={`text-sm ${!n.read ? 'text-white font-medium' : 'text-white/60'}`}>{n.title}</p>
+                            {n.body && <p className="text-xs text-white/40 mt-0.5">{n.body}</p>}
+                            <p className="text-xs text-white/30 mt-1">{formatTimeAgo(n.created_at)}</p>
                           </div>
                         ))
                       )}
@@ -142,98 +156,84 @@ export function Layout() {
                 )}
               </div>
 
-              <Link to="/profile" className="text-pkr-gold-300/70 text-sm hidden md:inline hover:text-pkr-gold-300 transition-colors">
-                {user.displayName}
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="text-sm text-pkr-gold-300/50 hover:text-pkr-gold-300 transition-colors hidden md:inline"
-              >
-                Logout
-              </button>
+              {/* User avatar */}
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="w-9 h-9 rounded-full bg-gold flex items-center justify-center text-felt-dark font-semibold text-sm hover:opacity-80 transition-opacity"
+                >
+                  {initials}
+                </button>
+
+                {showUserMenu && (
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-felt-dark border border-white/20 rounded-xl shadow-xl z-50 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-white/10">
+                      <div className="font-medium text-white text-sm">{user.displayName}</div>
+                    </div>
+                    <div className="py-1">
+                      <Link
+                        to="/profile"
+                        onClick={() => setShowUserMenu(false)}
+                        className="block px-4 py-2 text-sm text-white/70 hover:bg-white/10"
+                      >
+                        Profile
+                      </Link>
+                      <button
+                        onClick={() => { setShowUserMenu(false); handleLogout() }}
+                        className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500/20"
+                      >
+                        Log Out
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
-      </nav>
+      </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-6">
+      <main className="max-w-5xl mx-auto px-4 py-6 main-content">
         <Outlet />
       </main>
 
-      {/* Mobile bottom nav - 5 tabs when in league, 3 tabs otherwise */}
+      {/* Bottom tab bar */}
       {user && (
-        <nav className="fixed bottom-0 left-0 right-0 bg-pkr-green-900 border-t border-pkr-green-700/50 md:hidden z-50">
-          <div className="flex items-center justify-around h-16 pb-safe">
-            {leagueId ? (
-              <>
-                <NavTab
-                  to={`/leagues/${leagueId}`}
-                  icon="📅"
-                  label="Calendar"
-                  active={isActive(`/leagues/${leagueId}`)}
-                />
-                <NavTab
-                  to={`/leagues/${leagueId}/standings`}
-                  icon="🏆"
-                  label="Standings"
-                  active={isActivePrefix(`/leagues/${leagueId}/standings`)}
-                />
-                <NavTab
-                  to={`/leagues/${leagueId}/settings`}
-                  icon="⚙️"
-                  label="Settings"
-                  active={isActivePrefix(`/leagues/${leagueId}/settings`)}
-                />
-                <NavTab
-                  to={`/leagues/${leagueId}/members`}
-                  icon="🏅"
-                  label="Members"
-                  active={isActivePrefix(`/leagues/${leagueId}/members`)}
-                />
-                <NavTab
-                  to={`/leagues/${leagueId}/chat`}
-                  icon="💬"
-                  label="Chat"
-                  active={isActivePrefix(`/leagues/${leagueId}/chat`)}
-                  badge={unreadCount}
-                />
-              </>
-            ) : (
-              <>
-                <NavTab to="/" icon="🏠" label="Home" active={isActive('/')} />
-                <NavTab
-                  to="/notifications"
-                  icon="🔔"
-                  label="Alerts"
-                  active={isActive('/notifications')}
-                  badge={unreadCount}
-                />
-                <NavTab to="/profile" icon="👤" label="Profile" active={isActive('/profile')} />
-              </>
-            )}
-          </div>
+        <nav className="tab-bar md:hidden z-50">
+          {leagueId ? (
+            <>
+              <TabBtn to={`/leagues/${leagueId}`} icon="📅" label="Calendar" active={isActive(`/leagues/${leagueId}`)} />
+              <TabBtn to={`/leagues/${leagueId}/standings`} icon="🏆" label="Standings" active={isActivePrefix(`/leagues/${leagueId}/standings`)} />
+              <TabBtn to={`/leagues/${leagueId}/members`} icon="🏅" label="Members" active={isActivePrefix(`/leagues/${leagueId}/members`)} />
+              <TabBtn to={`/leagues/${leagueId}/chat`} icon="💬" label="Chat" active={isActivePrefix(`/leagues/${leagueId}/chat`)} badge={unreadCount} />
+              <TabBtn to={`/leagues/${leagueId}/settings`} icon="⚙️" label="Settings" active={isActivePrefix(`/leagues/${leagueId}/settings`)} />
+            </>
+          ) : (
+            <>
+              <TabBtn to="/" icon="🏠" label="Home" active={isActive('/')} />
+              <TabBtn to="/notifications" icon="🔔" label="Alerts" active={isActive('/notifications')} badge={unreadCount} />
+              <TabBtn to="/profile" icon="👤" label="Profile" active={isActive('/profile')} />
+            </>
+          )}
         </nav>
       )}
     </div>
   )
 }
 
-function NavTab({ to, icon, label, active, badge }) {
+function TabBtn({ to, icon, label, active, badge }) {
   return (
     <Link
       to={to}
-      className={`flex flex-col items-center gap-0.5 px-3 py-1 relative transition-colors ${
-        active ? 'text-pkr-gold-400' : 'text-pkr-gold-300/50'
-      }`}
+      className={`tab-btn ${active ? 'active' : ''}`}
     >
-      <span className="text-lg">{icon}</span>
-      {badge > 0 && (
-        <span className="absolute top-0 right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold">
-          {badge > 9 ? '9+' : badge}
-        </span>
-      )}
-      <span className="text-xs">{label}</span>
-      {active && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-pkr-gold-400 rounded-full" />}
+      <span className="icon relative">
+        {icon}
+        {badge > 0 && (
+          <span className="absolute -top-0.5 -right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+        )}
+      </span>
+      <span className="tab-label">{label}</span>
     </Link>
   )
 }

@@ -39,7 +39,7 @@ export function Members() {
     return (
       <div className="text-center py-20">
         <p className="text-red-400 mb-4">{error}</p>
-        <Link to={`/leagues/${leagueId}`} className="text-pkr-gold-400 hover:underline">Back to Dashboard</Link>
+        <Link to={`/leagues/${leagueId}`} className="text-gold hover:underline">Back to Dashboard</Link>
       </div>
     )
   }
@@ -76,33 +76,31 @@ export function Members() {
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
-        <Link to={`/leagues/${leagueId}`} className="text-pkr-gold-300/60 hover:text-pkr-gold-300 text-sm">&larr; {league?.name || 'Dashboard'}</Link>
-        <h1 className="text-2xl font-display font-bold text-pkr-gold-400 mt-1">Members</h1>
+        <Link to={`/leagues/${leagueId}`} className="text-white/40 hover:text-white text-sm">&larr; {league?.name || 'Dashboard'}</Link>
+        <h1 className="font-display text-xl text-gold mt-1">Members</h1>
       </div>
 
       {/* Search */}
-      <div>
-        <input
-          type="text"
-          placeholder="Search members..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-full px-4 py-2 bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg text-white placeholder-pkr-gold-300/30 focus:outline-none focus:border-pkr-gold-500"
-        />
-      </div>
+      <input
+        type="text"
+        placeholder="Search members..."
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        className="input"
+      />
 
       {/* Filter Tabs */}
-      <div className="flex gap-1 bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-1">
+      <div className="flex gap-2 flex-wrap">
         {tabs.map(tab => (
           <button
             key={tab.key}
             onClick={() => setFilter(tab.key)}
-            className={`flex-1 px-3 py-1.5 text-sm rounded-md transition-colors ${
+            className={`flex-1 min-w-[60px] py-2 px-3 rounded-xl text-sm font-medium transition-colors ${
               filter === tab.key
-                ? 'bg-pkr-gold-500 text-pkr-green-900'
-                : 'text-pkr-gold-300/50 hover:text-white'
+                ? 'bg-gold text-felt-dark'
+                : 'bg-white/10 text-white/70'
             }`}
           >
             {tab.label} ({counts[tab.key]})
@@ -111,9 +109,9 @@ export function Members() {
       </div>
 
       {/* Member List */}
-      <div className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg divide-y divide-pkr-green-700/50">
+      <div className="space-y-2">
         {filteredMembers.length === 0 ? (
-          <div className="p-6 text-center text-pkr-gold-300/40">No members found</div>
+          <div className="text-center py-8 text-white/40">No members found</div>
         ) : (
           filteredMembers.map((member) => {
             const gamesPlayed = member.games_played || 0
@@ -122,19 +120,17 @@ export function Members() {
             const name = getMemberName(member)
 
             return (
-              <div key={member.id} className="p-4">
+              <div key={member.id} className="card">
                 <div className="flex items-center gap-3">
                   <Avatar name={name} url={member.avatar_url} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-white font-medium">{name}</span>
-                      {/* Base role badge */}
+                      <span className="text-white font-medium text-sm">{name}</span>
                       <RoleBadge
                         type={member.role}
                         label={member.role}
                         emoji={member.role === 'owner' ? '👑' : member.role === 'admin' ? '⭐' : null}
                       />
-                      {/* Member type badge */}
                       {member.member_type === 'paid' && (
                         <RoleBadge type="paid" label="Paid" emoji="✓" />
                       )}
@@ -142,34 +138,23 @@ export function Members() {
                         <RoleBadge type="guest" label="Guest" />
                       )}
                       {isEligible && (
-                        <span className="px-2 py-0.5 text-xs rounded-full bg-green-900 text-green-300 border border-green-700">Eligible</span>
+                        <span className="px-2 py-0.5 text-xs rounded-full bg-green-600/20 text-green-400 border border-green-500/30">Eligible</span>
                       )}
-                      {/* Custom role badges */}
                       {member.custom_roles?.map(cr => (
                         <RoleBadge key={cr.id} type="custom" label={cr.name} emoji={cr.emoji} />
                       ))}
                     </div>
-                    {member.full_name && member.full_name !== name && (
-                      <p className="text-pkr-gold-300/40 text-sm mt-0.5">{member.full_name}</p>
-                    )}
                     {isGuest && guestThreshold > 0 && (
-                      <p className="text-pkr-gold-300/30 text-xs mt-0.5">
-                        {gamesPlayed} of {guestThreshold} games{isEligible ? ' - eligible for membership' : ''}
+                      <p className="text-white/30 text-xs mt-0.5">
+                        {gamesPlayed} of {guestThreshold} games{isEligible ? ' - eligible' : ''}
                       </p>
                     )}
                   </div>
                   <div className="text-right text-sm shrink-0">
-                    <p className="text-pkr-gold-300/50">{gamesPlayed} games</p>
-                    <p className="text-pkr-gold-400">{member.total_points || 0} pts</p>
+                    <p className="text-white/50">{gamesPlayed} games</p>
+                    <p className="text-gold font-display">{member.total_points || 0} pts</p>
                   </div>
                 </div>
-                {(member.total_wins > 0 || member.total_winnings > 0) && (
-                  <div className="flex gap-4 mt-2 text-xs text-pkr-gold-300/40 ml-13">
-                    {member.total_wins > 0 && <span>{member.total_wins} wins</span>}
-                    {member.total_winnings > 0 && <span>${parseFloat(member.total_winnings).toFixed(0)} won</span>}
-                    {member.total_bounties > 0 && <span>{member.total_bounties} bounties</span>}
-                  </div>
-                )}
               </div>
             )
           })

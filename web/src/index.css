@@ -1,3 +1,220 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Base styles */
+:root {
+  --felt: #1a472a;
+  --felt-dark: #0d2818;
+  --felt-light: #2d5a3d;
+  --gold: #d4af37;
+  --gold-dark: #b8860b;
+  --chip-red: #c41e3a;
+  --chip-blue: #1e5aa8;
+  --chip-green: #228b22;
+  --border: rgba(255, 255, 255, 0.1);
+  --text-light: #f5f5f5;
+  --text-muted: #a0a0a0;
+  --text-dark: #1a1a1a;
+  --success: #28a745;
+  --warning: #ffc107;
+  --danger: #dc3545;
+}
+
+body {
+  @apply bg-felt-dark text-white font-body;
+  background: radial-gradient(ellipse at center, #1a472a 0%, #0d2818 100%);
+  min-height: 100vh;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Card styles */
+@layer components {
+  .card {
+    @apply bg-black/20 rounded-2xl p-4 border border-white/5;
+  }
+
+  .card-gold {
+    @apply border-2 border-gold/50 bg-gradient-to-br from-gold/10 to-gold/5;
+  }
+
+  .btn {
+    @apply px-4 py-2 rounded-xl font-medium transition-all duration-200;
+  }
+
+  .btn-primary {
+    @apply bg-gold text-felt-dark hover:bg-gold-dark;
+  }
+
+  .btn-secondary {
+    @apply bg-white/10 text-white border border-white/20 hover:bg-white/20;
+  }
+
+  .btn-danger {
+    @apply bg-red-600/20 text-red-400 border border-red-500 hover:bg-red-600/30;
+  }
+
+  .input {
+    @apply w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/40 focus:border-gold focus:outline-none;
+  }
+
+  .label {
+    @apply block text-sm text-white/60 mb-2 font-medium;
+  }
+
+  /* Tab bar */
+  .tab-bar {
+    @apply fixed bottom-0 left-0 right-0 bg-felt-dark/95 backdrop-blur-lg border-t border-white/10 flex;
+  }
+
+  .tab-btn {
+    @apply flex-1 flex flex-col items-center py-2 px-1 border-t-2 border-transparent transition-colors;
+  }
+
+  .tab-btn.active {
+    @apply border-gold;
+  }
+
+  .tab-btn .icon {
+    @apply text-xl mb-0.5;
+  }
+
+  .tab-btn .tab-label {
+    @apply text-[10px] text-white/60;
+  }
+
+  .tab-btn.active .tab-label {
+    @apply text-gold font-semibold;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    @apply fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end justify-center z-50;
+  }
+
+  .modal-content {
+    @apply bg-felt-dark rounded-t-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 border-t border-white/10;
+  }
+
+  .modal-title {
+    @apply text-xl font-display font-semibold text-center mb-6 text-gold;
+  }
+
+  /* Avatar */
+  .avatar {
+    @apply rounded-full flex items-center justify-center font-semibold;
+  }
+
+  .avatar-sm {
+    @apply w-8 h-8 text-xs;
+  }
+
+  .avatar-md {
+    @apply w-10 h-10 text-sm;
+  }
+
+  .avatar-lg {
+    @apply w-12 h-12 text-base;
+  }
+
+  /* Rank badges */
+  .rank-1 {
+    @apply bg-gradient-to-br from-yellow-400 to-yellow-600 text-yellow-900;
+  }
+
+  .rank-2 {
+    @apply bg-gradient-to-br from-gray-300 to-gray-500 text-gray-800;
+  }
+
+  .rank-3 {
+    @apply bg-gradient-to-br from-amber-600 to-amber-800 text-white;
+  }
+
+  /* RSVP buttons */
+  .rsvp-btn {
+    @apply flex-1 py-3 rounded-xl text-sm font-medium transition-all;
+  }
+
+  .rsvp-yes {
+    @apply bg-green-600/20 text-green-400 border border-green-500/30;
+  }
+
+  .rsvp-yes.active {
+    @apply bg-green-600 text-white border-green-500;
+  }
+
+  .rsvp-maybe {
+    @apply bg-yellow-600/20 text-yellow-400 border border-yellow-500/30;
+  }
+
+  .rsvp-maybe.active {
+    @apply bg-yellow-600 text-yellow-900 border-yellow-500;
+  }
+
+  .rsvp-no {
+    @apply bg-red-600/20 text-red-400 border border-red-500/30;
+  }
+
+  .rsvp-no.active {
+    @apply bg-red-600 text-white border-red-500;
+  }
+
+  /* Timer display */
+  .timer-display {
+    @apply font-mono text-6xl font-bold text-white tracking-wider;
+  }
+
+  .blinds-display {
+    @apply font-display text-2xl text-gold;
+  }
+
+  /* Toast notification */
+  .toast {
+    @apply fixed top-4 left-1/2 -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-xl shadow-xl z-50 animate-slide-down;
+  }
+
+  @keyframes slide-down {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  }
+
+  .animate-slide-down {
+    animation: slide-down 0.3s ease-out;
+  }
+}
+
+/* Safe area for mobile */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .tab-bar {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .main-content {
+    padding-bottom: calc(70px + env(safe-area-inset-bottom));
+  }
+}

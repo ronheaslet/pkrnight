@@ -7,9 +7,9 @@ import { Avatar } from '../components/Avatar'
 
 const TABS = [
   { key: 'points', label: 'Points', icon: '🏆', sort: (a, b) => (b.total_points || 0) - (a.total_points || 0), column: 'total_points', format: v => `${v || 0} pts` },
-  { key: 'bounties', label: 'Bounties', icon: '👊', sort: (a, b) => (b.total_bounties || 0) - (a.total_bounties || 0), column: 'total_bounties', format: v => `${v || 0} KOs` },
+  { key: 'bounties', label: 'Bounties', icon: '🎯', sort: (a, b) => (b.total_bounties || 0) - (a.total_bounties || 0), column: 'total_bounties', format: v => `${v || 0} KOs` },
   { key: 'earnings', label: 'Earnings', icon: '💰', sort: (a, b) => parseFloat(b.total_winnings || 0) - parseFloat(a.total_winnings || 0), column: 'total_winnings', format: v => parseFloat(v) > 0 ? `$${parseFloat(v).toFixed(0)}` : '$0' },
-  { key: 'games', label: 'Games', icon: '🎮', sort: (a, b) => (b.games_played || 0) - (a.games_played || 0), column: 'games_played', format: v => `${v || 0} games` }
+  { key: 'games', label: 'Games', icon: '📊', sort: (a, b) => (b.games_played || 0) - (a.games_played || 0), column: 'games_played', format: v => `${v || 0} games` }
 ]
 
 const TROPHY_LABELS = {
@@ -95,7 +95,7 @@ export function Standings() {
     return (
       <div className="text-center py-20">
         <p className="text-red-400 mb-4">{error}</p>
-        <Link to={`/leagues/${leagueId}`} className="text-pkr-gold-400 hover:underline">Back to Dashboard</Link>
+        <Link to={`/leagues/${leagueId}`} className="text-gold hover:underline">Back to Dashboard</Link>
       </div>
     )
   }
@@ -119,8 +119,8 @@ export function Standings() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <Link to={`/leagues/${leagueId}`} className="text-pkr-gold-300/60 hover:text-pkr-gold-300 text-sm">&larr; {league?.name || 'Dashboard'}</Link>
-          <h1 className="text-2xl font-display font-bold text-pkr-gold-400 mt-1">Standings</h1>
+          <Link to={`/leagues/${leagueId}`} className="text-white/40 hover:text-white text-sm">&larr; {league?.name || 'Dashboard'}</Link>
+          <h1 className="font-display text-xl text-gold mt-1">Standings</h1>
         </div>
         <div className="flex gap-2">
           {standings.length > 0 && (
@@ -139,13 +139,13 @@ export function Standings() {
                 a.click()
                 URL.revokeObjectURL(url)
               }}
-              className="text-sm text-pkr-gold-300/60 hover:text-pkr-gold-300 px-2 py-1"
+              className="text-sm text-white/50 hover:text-white"
             >
               Export
             </button>
           )}
           {isAdmin && (
-            <button onClick={() => setShowSeasonActions(!showSeasonActions)} className="text-sm text-pkr-gold-300/60 hover:text-pkr-gold-300 px-2 py-1">
+            <button onClick={() => setShowSeasonActions(!showSeasonActions)} className="text-sm text-white/50 hover:text-white">
               Seasons
             </button>
           )}
@@ -154,29 +154,29 @@ export function Standings() {
 
       {/* Season Actions */}
       {showSeasonActions && isAdmin && (
-        <div className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-4 space-y-3">
+        <div className="card space-y-3">
           <h3 className="text-white font-semibold text-sm">Season Management</h3>
           {activeSeason ? (
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-white text-sm">Current: {activeSeason.name || `${activeSeason.year} Season`}</p>
-                <p className="text-pkr-gold-300/40 text-xs">Started {new Date(activeSeason.started_at).toLocaleDateString()}</p>
+                <p className="text-white/40 text-xs">Started {new Date(activeSeason.started_at).toLocaleDateString()}</p>
               </div>
               <button
                 onClick={() => handleCloseSeason(activeSeason.id)}
                 disabled={seasonLoading}
-                className="px-3 py-1.5 text-sm bg-pkr-gold-500 text-pkr-green-900 rounded hover:bg-pkr-gold-400 disabled:opacity-50"
+                className="btn btn-primary text-sm disabled:opacity-50"
               >
                 {seasonLoading ? 'Processing...' : 'Close Season'}
               </button>
             </div>
           ) : (
             <div className="flex items-center justify-between">
-              <p className="text-pkr-gold-300/60 text-sm">No active season</p>
+              <p className="text-white/60 text-sm">No active season</p>
               <button
                 onClick={handleCreateSeason}
                 disabled={seasonLoading}
-                className="px-3 py-1.5 text-sm bg-pkr-gold-500 text-pkr-green-900 rounded hover:bg-pkr-gold-400 disabled:opacity-50"
+                className="btn btn-primary text-sm disabled:opacity-50"
               >
                 {seasonLoading ? 'Creating...' : `Start ${new Date().getFullYear()} Season`}
               </button>
@@ -186,60 +186,73 @@ export function Standings() {
       )}
 
       {/* Season Banner */}
-      <div className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-4 text-center">
-        <p className="text-xs uppercase tracking-wider text-pkr-gold-400 font-semibold">Current Season</p>
-        <div className="flex items-center justify-center gap-6 mt-2">
-          <div>
-            <p className="text-white font-bold text-lg">{totalGames}</p>
-            <p className="text-pkr-gold-300/50 text-xs">Games Played</p>
-          </div>
-          <div className="w-px h-8 bg-pkr-green-700/50" />
-          <div>
-            <p className="text-white font-bold text-lg">${totalPrize.toFixed(0)}</p>
-            <p className="text-pkr-gold-300/50 text-xs">Total Prize Pools</p>
+      {standings.length > 0 && (
+        <div className="card card-gold">
+          <div className="flex justify-between items-center">
+            <div>
+              <div className="text-xs text-gold uppercase tracking-wider">Current Season</div>
+              <div className="font-display text-lg text-white">
+                {totalGames} Games Played
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs text-white/50">Total Prize Pools</div>
+              <div className="font-display text-xl text-gold">
+                ${totalPrize.toFixed(0)}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-pkr-green-900 border border-pkr-green-700/50 rounded-lg p-1">
+      <div className="flex gap-2 flex-wrap">
         {TABS.map(t => (
           <button
             key={t.key}
             onClick={() => setActiveTab(t.key)}
-            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-              activeTab === t.key ? 'bg-pkr-gold-500 text-pkr-green-900' : 'text-pkr-gold-300/60 hover:text-pkr-gold-300'
+            className={`flex-1 min-w-[70px] py-2 px-3 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
+              activeTab === t.key
+                ? 'bg-gold text-felt-dark'
+                : 'bg-white/10 text-white/70'
             }`}
           >
             <span>{t.icon}</span>
-            <span className="hidden sm:inline">{t.label}</span>
+            <span>{t.label}</span>
           </button>
         ))}
       </div>
 
       {/* Leaderboard */}
       {standings.length === 0 ? (
-        <div className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-8 text-center">
-          <p className="text-pkr-gold-300/60">No games played yet.</p>
-          <p className="text-pkr-gold-300/40 text-sm mt-1">Standings will appear after the first completed game.</p>
+        <div className="text-center py-12">
+          <div className="text-4xl mb-3">📊</div>
+          <div className="text-white/60 mb-2">No standings yet</div>
+          <div className="text-white/40 text-sm">Play some games to see the leaderboard!</div>
         </div>
       ) : (
         <div>
-          <h2 className="text-sm font-medium text-pkr-gold-400 mb-3">{tab.icon} {tab.label} Leaderboard</h2>
+          <h2 className="font-display text-lg text-gold mb-3">{tab.icon} {tab.label} Leaderboard</h2>
           <div className="space-y-2">
             {sorted.map((player, idx) => (
-              <div
+              <button
                 key={player.user_id}
                 onClick={() => handlePlayerClick(player)}
-                className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-3 flex items-center gap-3 cursor-pointer hover:border-pkr-gold-500/30 transition-colors"
+                className={`card flex items-center gap-3 w-full text-left hover:bg-white/5 transition-colors ${
+                  player.user_id === user?.id ? 'border-gold/50 border' : ''
+                }`}
               >
-                <RankBadge rank={idx + 1} />
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                  idx === 0 ? 'rank-1' : idx === 1 ? 'rank-2' : idx === 2 ? 'rank-3' : 'bg-gray-700 text-white'
+                }`}>
+                  {idx + 1}
+                </div>
                 <Avatar name={player.display_name} size="md" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-white font-medium truncate">{player.display_name}</span>
+                    <span className="font-semibold text-white text-sm truncate">{player.display_name}</span>
                     {player.user_id === user?.id && (
-                      <span className="text-pkr-gold-400 text-xs">(You)</span>
+                      <span className="text-gold text-xs">(You)</span>
                     )}
                     {trophyMap[player.user_id] && (
                       <span className="flex gap-0.5">
@@ -251,14 +264,14 @@ export function Standings() {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-pkr-gold-300/40 mt-0.5">
-                    {player.games_played || 0} games &bull; {player.total_wins || 0} wins &bull; {player.total_bounties || 0} KOs
+                  <p className="text-xs text-white/50">
+                    {player.games_played || 0} games • {player.total_wins || 0} wins • {player.total_bounties || 0} KOs
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-pkr-gold-400 font-semibold">{tab.format(player[tab.column])}</p>
+                  <div className="font-display text-xl text-gold">{tab.format(player[tab.column])}</div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -278,63 +291,80 @@ export function Standings() {
   )
 }
 
-function RankBadge({ rank }) {
-  const colors = {
-    1: 'bg-yellow-500 text-yellow-900',
-    2: 'bg-gray-300 text-gray-700',
-    3: 'bg-amber-600 text-amber-100',
-  }
-  return (
-    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${colors[rank] || 'bg-pkr-green-700 text-pkr-gold-300/60'}`}>
-      {rank}
-    </div>
-  )
-}
-
 function PlayerModal({ player, detail, loading, trophies, onClose }) {
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-pkr-green-800 border border-pkr-green-700 rounded-lg w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="flex justify-between items-center p-4 border-b border-pkr-green-700">
-          <h2 className="text-xl font-display font-bold text-pkr-gold-400">{player.display_name}</h2>
-          <button onClick={onClose} className="text-pkr-gold-300/50 hover:text-white text-xl">&times;</button>
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-felt-dark border border-white/10 rounded-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center p-4 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <Avatar name={player.display_name} size="lg" />
+            <div>
+              <h2 className="font-display text-xl text-white">{player.display_name}</h2>
+              <div className="text-sm text-white/50">{player.games_played || 0} games played</div>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-white/60 text-2xl">&times;</button>
         </div>
         {loading ? (
-          <div className="p-8 text-center text-pkr-gold-300/50">Loading...</div>
+          <div className="p-8 text-center text-white/50">Loading...</div>
         ) : (
-          <div className="p-4 space-y-4">
+          <div className="p-4 flex-1 overflow-y-auto space-y-4">
+            {/* Stats grid */}
             <div className="grid grid-cols-3 gap-3">
-              <MiniStat label="Points" value={player.total_points} />
-              <MiniStat label="Games" value={player.games_played} />
-              <MiniStat label="Wins" value={player.total_wins} />
-              <MiniStat label="Earnings" value={parseFloat(player.total_winnings) > 0 ? `$${parseFloat(player.total_winnings).toFixed(0)}` : '-'} />
-              <MiniStat label="Bounties" value={player.total_bounties || 0} />
-              <MiniStat label="Win Rate" value={player.games_played > 0 ? `${Math.round((player.total_wins / player.games_played) * 100)}%` : '-'} />
+              <div className="card text-center">
+                <div className="font-display text-2xl text-gold">{player.total_points || 0}</div>
+                <div className="text-xs text-white/50">Points</div>
+              </div>
+              <div className="card text-center">
+                <div className="font-display text-2xl text-white">{player.total_wins || 0}</div>
+                <div className="text-xs text-white/50">Wins</div>
+              </div>
+              <div className="card text-center">
+                <div className="font-display text-2xl text-chip-red">{player.total_bounties || 0}</div>
+                <div className="text-xs text-white/50">Bounties</div>
+              </div>
             </div>
+
+            <div className="card">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-white/50">Earnings:</span>
+                  <span className="text-white ml-2">{parseFloat(player.total_winnings) > 0 ? `$${parseFloat(player.total_winnings).toFixed(0)}` : '-'}</span>
+                </div>
+                <div>
+                  <span className="text-white/50">Win Rate:</span>
+                  <span className="text-white ml-2">{player.games_played > 0 ? `${Math.round((player.total_wins / player.games_played) * 100)}%` : '-'}</span>
+                </div>
+              </div>
+            </div>
+
             {trophies.length > 0 && (
               <div>
-                <h3 className="text-sm font-medium text-pkr-gold-300/60 uppercase mb-2">Trophy Case</h3>
+                <h3 className="text-sm font-medium text-white/50 uppercase mb-2">Trophy Case</h3>
                 <div className="flex flex-wrap gap-2">
                   {trophies.map(t => (
-                    <div key={t.id} className="flex items-center gap-1.5 bg-pkr-green-700 px-3 py-1.5 rounded-full">
+                    <div key={t.id} className="flex items-center gap-1.5 bg-gold/10 border border-gold/30 px-3 py-1.5 rounded-full">
                       <span>{TROPHY_LABELS[t.trophy_type]?.icon || '🏅'}</span>
-                      <span className="text-sm text-white">{TROPHY_LABELS[t.trophy_type]?.label || t.trophy_type}</span>
+                      <span className="text-sm text-gold">{TROPHY_LABELS[t.trophy_type]?.label || t.trophy_type}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
+
             {detail?.recentGames?.length > 0 && (
               <div>
-                <h3 className="text-sm font-medium text-pkr-gold-300/60 uppercase mb-2">Recent Games</h3>
-                <div className="bg-pkr-green-900 rounded-lg overflow-hidden">
+                <h3 className="text-sm font-medium text-white/50 uppercase mb-2">Recent Games</h3>
+                <div className="space-y-2">
                   {detail.recentGames.map((game, i) => (
-                    <div key={i} className="flex items-center justify-between px-3 py-2 text-sm border-t border-pkr-green-800 first:border-0">
-                      <span className="text-white truncate flex-1">{game.event_title}</span>
-                      <span className={`ml-2 ${game.finish_position === 1 ? 'text-pkr-gold-400 font-bold' : 'text-pkr-gold-300/60'}`}>
-                        #{game.finish_position || '-'}
-                      </span>
-                      <span className="ml-3 text-pkr-gold-300/60">{game.points_earned || 0}pts</span>
+                    <div key={i} className="card flex items-center gap-3">
+                      <div className="text-lg">
+                        {game.finish_position === 1 ? '🥇' : game.finish_position === 2 ? '🥈' : game.finish_position === 3 ? '🥉' : `#${game.finish_position || '-'}`}
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-white truncate">{game.event_title}</div>
+                      </div>
+                      <div className="text-gold text-sm">{game.points_earned || 0} pts</div>
                     </div>
                   ))}
                 </div>
@@ -343,15 +373,6 @@ function PlayerModal({ player, detail, loading, trophies, onClose }) {
           </div>
         )}
       </div>
-    </div>
-  )
-}
-
-function MiniStat({ label, value }) {
-  return (
-    <div className="bg-pkr-green-900 rounded-lg p-3 text-center">
-      <p className="text-lg font-bold text-white">{value}</p>
-      <p className="text-xs text-pkr-gold-300/40">{label}</p>
     </div>
   )
 }

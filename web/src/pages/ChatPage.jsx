@@ -110,25 +110,25 @@ export function ChatPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <Link to={`/leagues/${leagueId}`} className="text-pkr-gold-300/60 hover:text-pkr-gold-300 text-sm">&larr; {league?.name || 'Back'}</Link>
-          <h1 className="text-xl font-display font-bold text-pkr-gold-400 mt-0.5">League Chat</h1>
+          <Link to={`/leagues/${leagueId}`} className="text-white/40 hover:text-white text-sm">&larr; {league?.name || 'Back'}</Link>
+          <h1 className="font-display text-xl text-gold mt-0.5">League Chat</h1>
         </div>
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto bg-pkr-green-900/50 border border-pkr-green-700/50 rounded-lg p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto bg-black/20 border border-white/5 rounded-2xl p-4 space-y-3">
         {loading ? (
-          <p className="text-pkr-gold-300/40 text-sm text-center py-8">Loading messages...</p>
+          <p className="text-white/40 text-sm text-center py-8">Loading messages...</p>
         ) : messages.length === 0 ? (
-          <p className="text-pkr-gold-300/40 text-sm text-center py-8">No messages yet. Start the conversation!</p>
+          <p className="text-white/40 text-sm text-center py-8">No messages yet. Start the conversation!</p>
         ) : (
           grouped.map((item, idx) => {
             if (item.type === 'date') {
               return (
                 <div key={`date-${idx}`} className="flex items-center gap-3 py-2">
-                  <div className="flex-1 h-px bg-pkr-green-700/50" />
-                  <span className="text-xs text-pkr-gold-300/40">{item.date}</span>
-                  <div className="flex-1 h-px bg-pkr-green-700/50" />
+                  <div className="flex-1 h-px bg-white/10" />
+                  <span className="text-xs text-white/30">{item.date}</span>
+                  <div className="flex-1 h-px bg-white/10" />
                 </div>
               )
             }
@@ -140,12 +140,12 @@ export function ChatPage() {
                 {!isMe && <Avatar name={item.display_name} size="sm" />}
                 <div className={`max-w-[75%] ${isMe ? 'text-right' : ''}`}>
                   {!isMe && (
-                    <p className="text-xs text-pkr-gold-400 font-medium mb-0.5">{item.display_name}</p>
+                    <p className="text-xs text-gold font-medium mb-0.5">{item.display_name}</p>
                   )}
-                  <div className={`inline-block rounded-lg px-3 py-2 ${isMe ? 'bg-pkr-green-600 text-white' : 'bg-pkr-green-800 text-white border border-pkr-green-700/50'}`}>
+                  <div className={`inline-block rounded-xl px-3 py-2 ${isMe ? 'bg-felt-light text-white' : 'bg-black/30 text-white border border-white/5'}`}>
                     <p className="text-sm break-words">{item.message}</p>
                   </div>
-                  <p className="text-xs text-pkr-gold-300/30 mt-0.5">
+                  <p className="text-xs text-white/30 mt-0.5">
                     {new Date(item.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                   </p>
                 </div>
@@ -164,12 +164,12 @@ export function ChatPage() {
           onChange={e => setInput(e.target.value)}
           placeholder="Type a message..."
           maxLength={1000}
-          className="flex-1 px-4 py-2.5 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 text-sm placeholder-pkr-gold-300/30 focus:border-pkr-gold-500 focus:outline-none"
+          className="input flex-1"
         />
         <button
           type="submit"
           disabled={!input.trim() || sending}
-          className="px-4 py-2.5 bg-pkr-gold-500 text-pkr-green-900 font-medium rounded-lg hover:bg-pkr-gold-400 disabled:opacity-50 transition-colors"
+          className="btn btn-primary disabled:opacity-50"
         >
           Send
         </button>

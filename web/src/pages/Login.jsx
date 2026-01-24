@@ -25,38 +25,60 @@ export function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pkr-green-800 to-pkr-green-950 flex flex-col items-center justify-center p-4">
-      <h1 className="text-4xl font-display font-bold text-pkr-gold-400 mb-8">PKR Night</h1>
-      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4 bg-pkr-green-800/50 border border-pkr-green-700/50 rounded-xl p-6">
-        <h2 className="text-2xl font-display font-bold text-white text-center">Sign In</h2>
-        {error && <p className="text-red-400 text-sm text-center">{error}</p>}
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full px-4 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full px-4 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
-          required
-        />
+    <div className="min-h-screen flex flex-col px-6 py-12">
+      {/* Header */}
+      <div className="text-center mb-8 mt-12">
+        <div className="text-4xl mb-3">🃏</div>
+        <h1 className="font-display text-2xl text-gold">Welcome Back</h1>
+        <p className="text-white/60 text-sm mt-1">Sign in to your account</p>
+      </div>
+
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="max-w-sm mx-auto w-full">
+        {error && (
+          <div className="bg-red-500/20 border border-red-500 text-red-400 px-4 py-3 rounded-xl mb-4 text-sm">
+            {error}
+          </div>
+        )}
+
+        <div className="mb-4">
+          <label className="label">Email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="input"
+            placeholder="you@example.com"
+            required
+          />
+        </div>
+
+        <div className="mb-6">
+          <label className="label">Password</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="input"
+            placeholder="••••••••"
+            required
+          />
+        </div>
+
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-2.5 bg-pkr-gold-500 text-pkr-green-900 rounded-lg hover:bg-pkr-gold-400 disabled:opacity-50 transition-colors font-medium"
+          className="btn btn-primary w-full py-3 disabled:opacity-50"
         >
           {loading ? 'Signing in...' : 'Sign In'}
         </button>
-        <p className="text-pkr-gold-300/50 text-sm text-center">
+
+        <div className="text-center mt-6 text-sm text-white/60">
           Don't have an account?{' '}
-          <Link to="/register" className="text-pkr-gold-400 hover:underline">Register</Link>
-        </p>
+          <Link to="/register" className="text-gold hover:underline">
+            Sign up
+          </Link>
+        </div>
       </form>
     </div>
   )

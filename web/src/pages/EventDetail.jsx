@@ -35,7 +35,6 @@ export function EventDetail() {
       setLeague(leagueData.league)
       setRsvps(rsvpData.rsvps)
 
-      // Check if game session exists
       if (eventData.event.session_id) {
         const gameData = await api.get(`/api/games/${eventData.event.session_id}`)
         setSession(gameData.session)
@@ -126,7 +125,7 @@ export function EventDetail() {
     return (
       <div className="text-center py-20">
         <p className="text-red-400 mb-4">{error}</p>
-        <Link to={`/leagues/${leagueId}`} className="text-pkr-gold-400 hover:underline">Back to Dashboard</Link>
+        <Link to={`/leagues/${leagueId}`} className="text-gold hover:underline">Back to Dashboard</Link>
       </div>
     )
   }
@@ -146,15 +145,15 @@ export function EventDetail() {
   return (
     <div className="space-y-6">
       {/* Back nav */}
-      <Link to={`/leagues/${leagueId}`} className="text-pkr-gold-300/60 hover:text-pkr-gold-300 text-sm">&larr; {league?.name || 'Dashboard'}</Link>
+      <Link to={`/leagues/${leagueId}`} className="text-white/40 hover:text-white text-sm">&larr; {league?.name || 'Dashboard'}</Link>
 
       {/* Event Header */}
-      <div className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-6">
+      <div className="card">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white">{event.title}</h1>
-            {event.description && <p className="text-pkr-gold-300/50 mt-1">{event.description}</p>}
-            <div className="flex flex-wrap gap-4 mt-3 text-sm text-pkr-gold-300/50">
+            <h1 className="text-2xl font-display font-bold text-white">{event.title}</h1>
+            {event.description && <p className="text-white/50 mt-1">{event.description}</p>}
+            <div className="flex flex-wrap gap-4 mt-3 text-sm text-white/60">
               <span>
                 {new Date(event.scheduled_at).toLocaleDateString(undefined, {
                   weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
@@ -169,15 +168,26 @@ export function EventDetail() {
 
         {/* Buy-in info */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-          <InfoItem label="Buy-in" value={event.buy_in_amount > 0 ? `$${parseFloat(event.buy_in_amount).toFixed(0)}` : 'Free'} />
-          <InfoItem label="Rebuys" value={event.max_rebuys > 0 ? `${event.max_rebuys} ($${parseFloat(event.rebuy_amount || 0).toFixed(0)})` : 'None'} />
-          <InfoItem label="Players" value={session?.player_count || participants.length || '0'} />
-          <InfoItem label="Prize Pool" value={session?.prize_pool > 0 ? `$${parseFloat(session.prize_pool).toFixed(0)}` : '-'} />
+          <div className="text-center">
+            <p className="text-white/50 text-xs uppercase">Buy-in</p>
+            <p className="text-gold font-display text-lg mt-0.5">{event.buy_in_amount > 0 ? `$${parseFloat(event.buy_in_amount).toFixed(0)}` : 'Free'}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-white/50 text-xs uppercase">Rebuys</p>
+            <p className="text-white font-medium mt-0.5">{event.max_rebuys > 0 ? `${event.max_rebuys} ($${parseFloat(event.rebuy_amount || 0).toFixed(0)})` : 'None'}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-white/50 text-xs uppercase">Players</p>
+            <p className="text-white font-medium mt-0.5">{session?.player_count || participants.length || '0'}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-white/50 text-xs uppercase">Prize Pool</p>
+            <p className="text-gold font-display text-lg mt-0.5">{session?.prize_pool > 0 ? `$${parseFloat(session.prize_pool).toFixed(0)}` : '-'}</p>
+          </div>
         </div>
 
-        {/* Rebuy cutoff info */}
         {event.rebuy_cutoff_level > 0 && (
-          <div className="mt-3 text-sm text-pkr-gold-300/50">
+          <div className="mt-3 text-sm text-white/50">
             Rebuys close after Level {event.rebuy_cutoff_level}
           </div>
         )}
@@ -185,61 +195,61 @@ export function EventDetail() {
 
       {/* RSVP Section */}
       {!isCompleted && (
-        <div className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-4">
-          <h2 className="text-lg font-semibold text-white mb-3">RSVP</h2>
-          <div className="flex gap-2 mb-4">
+        <div className="card">
+          <div className="text-xs text-white/50 mb-3">Your Response</div>
+          <div className="flex gap-2">
             <button
               onClick={() => handleRsvp('going')}
               disabled={rsvpLoading}
-              className={`px-4 py-2 text-sm rounded transition-colors ${myRsvp?.status === 'going' ? 'bg-green-600 text-white' : 'bg-pkr-green-700 text-pkr-gold-300 hover:bg-pkr-green-600'}`}
+              className={`rsvp-btn rsvp-yes ${myRsvp?.status === 'going' ? 'active' : ''}`}
             >
-              Going ({goingList.length})
+              ✓ Going ({goingList.length})
             </button>
             <button
               onClick={() => handleRsvp('maybe')}
               disabled={rsvpLoading}
-              className={`px-4 py-2 text-sm rounded transition-colors ${myRsvp?.status === 'maybe' ? 'bg-yellow-600 text-white' : 'bg-pkr-green-700 text-pkr-gold-300 hover:bg-pkr-green-600'}`}
+              className={`rsvp-btn rsvp-maybe ${myRsvp?.status === 'maybe' ? 'active' : ''}`}
             >
-              Maybe ({maybeList.length})
+              ? Maybe ({maybeList.length})
             </button>
             <button
               onClick={() => handleRsvp('not_going')}
               disabled={rsvpLoading}
-              className={`px-4 py-2 text-sm rounded transition-colors ${myRsvp?.status === 'not_going' ? 'bg-red-600 text-white' : 'bg-pkr-green-700 text-pkr-gold-300 hover:bg-pkr-green-600'}`}
+              className={`rsvp-btn rsvp-no ${myRsvp?.status === 'not_going' ? 'active' : ''}`}
             >
-              Can't Go ({notGoingList.length})
+              ✗ Can't ({notGoingList.length})
             </button>
           </div>
 
           {/* RSVP Lists */}
           {rsvps.length > 0 && (
-            <div className="space-y-2">
+            <div className="space-y-3 mt-4 pt-4 border-t border-white/10">
               {goingList.length > 0 && (
                 <div>
-                  <span className="text-pkr-gold-400 text-xs uppercase font-medium">Going</span>
-                  <div className="flex flex-wrap gap-2 mt-1">
+                  <div className="text-xs text-green-400 mb-2">✓ Going ({goingList.length})</div>
+                  <div className="flex flex-wrap gap-1.5">
                     {goingList.map(r => (
-                      <span key={r.id} className="text-sm text-white bg-pkr-green-700 px-2 py-0.5 rounded">{r.display_name}</span>
+                      <span key={r.id} className="flex items-center gap-1.5 bg-green-600/20 px-2 py-1 rounded-full text-xs text-white">{r.display_name}</span>
                     ))}
                   </div>
                 </div>
               )}
               {maybeList.length > 0 && (
                 <div>
-                  <span className="text-yellow-400 text-xs uppercase font-medium">Maybe</span>
-                  <div className="flex flex-wrap gap-2 mt-1">
+                  <div className="text-xs text-yellow-400 mb-2">? Maybe ({maybeList.length})</div>
+                  <div className="flex flex-wrap gap-1.5">
                     {maybeList.map(r => (
-                      <span key={r.id} className="text-sm text-pkr-gold-300/70 bg-pkr-green-700 px-2 py-0.5 rounded">{r.display_name}</span>
+                      <span key={r.id} className="flex items-center gap-1.5 bg-yellow-600/20 px-2 py-1 rounded-full text-xs text-white/70">{r.display_name}</span>
                     ))}
                   </div>
                 </div>
               )}
               {notGoingList.length > 0 && (
                 <div>
-                  <span className="text-red-400 text-xs uppercase font-medium">Can't Go</span>
-                  <div className="flex flex-wrap gap-2 mt-1">
+                  <div className="text-xs text-red-400 mb-2">✗ Can't Go ({notGoingList.length})</div>
+                  <div className="flex flex-wrap gap-1.5">
                     {notGoingList.map(r => (
-                      <span key={r.id} className="text-sm text-pkr-gold-300/40 bg-pkr-green-700 px-2 py-0.5 rounded">{r.display_name}</span>
+                      <span key={r.id} className="flex items-center gap-1.5 bg-red-600/20 px-2 py-1 rounded-full text-xs text-white/50">{r.display_name}</span>
                     ))}
                   </div>
                 </div>
@@ -251,78 +261,43 @@ export function EventDetail() {
 
       {/* Action Error */}
       {actionError && (
-        <div className="bg-red-900/50 border border-red-700 rounded-lg p-3 text-red-300 text-sm">
+        <div className="bg-red-500/20 border border-red-500 text-red-400 px-4 py-3 rounded-xl text-sm">
           {actionError}
         </div>
       )}
 
       {/* Actions */}
       <div className="flex flex-wrap gap-3">
-        {/* Admin: Create game session */}
         {isAdmin && !session && (
-          <button
-            onClick={handleCreateSession}
-            disabled={actionLoading}
-            className="px-5 py-2 bg-pkr-gold-500 text-pkr-green-900 rounded-lg hover:bg-pkr-gold-400 disabled:opacity-50 transition-colors"
-          >
+          <button onClick={handleCreateSession} disabled={actionLoading} className="btn btn-primary disabled:opacity-50">
             {actionLoading ? 'Creating...' : 'Create Game Session'}
           </button>
         )}
-
-        {/* Player: Register for game */}
         {session && isPending && !isRegistered && (
-          <button
-            onClick={handleRegister}
-            disabled={actionLoading}
-            className="px-5 py-2 bg-pkr-gold-500 text-pkr-green-900 rounded-lg hover:bg-pkr-gold-400 disabled:opacity-50 transition-colors"
-          >
+          <button onClick={handleRegister} disabled={actionLoading} className="btn btn-primary disabled:opacity-50">
             {actionLoading ? 'Registering...' : 'Register for Game'}
           </button>
         )}
-
-        {/* Registered indicator + unregister */}
         {isRegistered && isPending && (
           <>
-            <span className="px-5 py-2 bg-green-900/50 text-green-300 rounded border border-green-700">
-              Registered
-            </span>
-            <button
-              onClick={handleUnregister}
-              disabled={actionLoading}
-              className="px-5 py-2 text-sm text-pkr-gold-300/50 hover:text-red-400 transition-colors"
-            >
+            <span className="btn bg-green-600/20 text-green-400 border border-green-500/30">Registered</span>
+            <button onClick={handleUnregister} disabled={actionLoading} className="text-sm text-white/50 hover:text-red-400">
               Unregister
             </button>
           </>
         )}
-
-        {/* Enter game */}
         {session && (isPending || isRunning) && (
-          <button
-            onClick={handleEnterGame}
-            className="px-5 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-          >
+          <button onClick={handleEnterGame} className="btn bg-chip-blue text-white hover:opacity-80">
             {isRunning ? 'Enter Game (Live)' : 'View Game'}
           </button>
         )}
-
-        {/* View completed game */}
         {session && isCompleted && (
-          <button
-            onClick={handleEnterGame}
-            className="px-5 py-2 bg-pkr-green-700 text-white rounded hover:bg-pkr-green-600 transition-colors"
-          >
+          <button onClick={handleEnterGame} className="btn btn-secondary">
             View Results
           </button>
         )}
-
-        {/* Admin: Delete event (only if no completed game) */}
         {isAdmin && !isCompleted && (
-          <button
-            onClick={handleDeleteEvent}
-            disabled={actionLoading}
-            className="px-5 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 transition-colors"
-          >
+          <button onClick={handleDeleteEvent} disabled={actionLoading} className="btn btn-danger disabled:opacity-50">
             {actionLoading ? 'Deleting...' : 'Delete Event'}
           </button>
         )}
@@ -331,10 +306,10 @@ export function EventDetail() {
       {/* Participants */}
       {participants.length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold text-white mb-3">
+          <h2 className="font-display text-lg text-gold mb-3">
             {isCompleted ? 'Results' : 'Registered Players'}
           </h2>
-          <div className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg divide-y divide-pkr-green-700/50">
+          <div className="card p-0 divide-y divide-white/5">
             {participants
               .sort((a, b) => {
                 if (isCompleted) return (a.finish_position || 99) - (b.finish_position || 99)
@@ -344,20 +319,20 @@ export function EventDetail() {
                 <div key={p.id} className="flex items-center justify-between p-3">
                   <div className="flex items-center gap-3">
                     {isCompleted && p.finish_position && (
-                      <span className={`text-sm font-medium w-6 ${p.finish_position === 1 ? 'text-yellow-400' : 'text-pkr-gold-300/40'}`}>
+                      <span className={`text-sm font-bold w-6 ${p.finish_position === 1 ? 'text-yellow-400' : p.finish_position === 2 ? 'text-gray-300' : p.finish_position === 3 ? 'text-amber-600' : 'text-white/40'}`}>
                         #{p.finish_position}
                       </span>
                     )}
-                    <span className="text-white">{p.display_name}</span>
+                    <span className="text-white text-sm">{p.display_name}</span>
                     {p.status === 'playing' && <span className="w-2 h-2 rounded-full bg-green-400" />}
-                    {p.status === 'eliminated' && <span className="text-pkr-gold-300/40 text-xs">(eliminated)</span>}
+                    {p.status === 'eliminated' && <span className="text-white/40 text-xs">(out)</span>}
                     {p.status === 'winner' && <span className="text-yellow-400 text-xs">Winner</span>}
                   </div>
-                  <div className="flex gap-3 text-sm text-pkr-gold-300/50">
-                    {p.bounty_count > 0 && <span>{p.bounty_count} KO</span>}
-                    {p.rebuy_count > 0 && <span>{p.rebuy_count} rebuy</span>}
+                  <div className="flex gap-3 text-sm text-white/50">
+                    {p.bounty_count > 0 && <span className="text-chip-red">{p.bounty_count} KO</span>}
+                    {p.rebuy_count > 0 && <span>{p.rebuy_count}R</span>}
                     {isCompleted && p.winnings > 0 && (
-                      <span className="text-pkr-gold-400">${parseFloat(p.winnings).toFixed(0)}</span>
+                      <span className="text-gold">${parseFloat(p.winnings).toFixed(0)}</span>
                     )}
                     {isCompleted && p.points_earned > 0 && (
                       <span>{p.points_earned} pts</span>
@@ -372,18 +347,16 @@ export function EventDetail() {
       {/* Game Timeline */}
       {isCompleted && timeline.length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold text-white mb-3">Game Timeline</h2>
-          <div className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-4">
-            <div className="space-y-2">
-              {timeline.map((evt, i) => (
-                <div key={i} className="flex items-start gap-3 text-sm">
-                  <span className="text-pkr-gold-300/30 text-xs whitespace-nowrap mt-0.5">
-                    {new Date(evt.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                  </span>
-                  <TimelineEvent event={evt} />
-                </div>
-              ))}
-            </div>
+          <h2 className="font-display text-lg text-gold mb-3">Game Timeline</h2>
+          <div className="card space-y-2">
+            {timeline.map((evt, i) => (
+              <div key={i} className="flex items-start gap-3 text-sm">
+                <span className="text-white/30 text-xs whitespace-nowrap mt-0.5">
+                  {new Date(evt.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                </span>
+                <TimelineEvent event={evt} />
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -391,23 +364,14 @@ export function EventDetail() {
   )
 }
 
-function InfoItem({ label, value }) {
-  return (
-    <div className="text-center">
-      <p className="text-pkr-gold-300/50 text-xs uppercase">{label}</p>
-      <p className="text-white font-medium mt-0.5">{value}</p>
-    </div>
-  )
-}
-
 function StatusBadge({ status }) {
   const styles = {
-    scheduled: 'bg-blue-900 text-blue-300',
-    pending: 'bg-yellow-900 text-yellow-300',
-    running: 'bg-green-900 text-green-300',
-    paused: 'bg-yellow-900 text-yellow-300',
-    completed: 'bg-pkr-green-700 text-pkr-gold-300',
-    cancelled: 'bg-red-900 text-red-300'
+    scheduled: 'bg-blue-500/20 text-blue-300 border border-blue-500/30',
+    pending: 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30',
+    running: 'bg-green-500/20 text-green-300 border border-green-500/30',
+    paused: 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30',
+    completed: 'bg-white/10 text-white/50 border border-white/10',
+    cancelled: 'bg-red-500/20 text-red-300 border border-red-500/30'
   }
   return (
     <span className={`px-3 py-1 text-sm rounded-full ${styles[status] || styles.scheduled}`}>
@@ -420,17 +384,17 @@ function TimelineEvent({ event }) {
   const data = event.event_data ? (typeof event.event_data === 'string' ? JSON.parse(event.event_data) : event.event_data) : {}
 
   const messages = {
-    GAME_STARTED: () => <span className="text-pkr-gold-400">Game started</span>,
-    PLAYER_REGISTERED: () => <span className="text-pkr-gold-300/70"><span className="text-white">{data.playerName || 'Player'}</span> registered</span>,
+    GAME_STARTED: () => <span className="text-gold">Game started</span>,
+    PLAYER_REGISTERED: () => <span className="text-white/70"><span className="text-white">{data.playerName || 'Player'}</span> registered</span>,
     PLAYER_ELIMINATED: () => <span className="text-red-400"><span className="text-white">{data.playerName || 'Player'}</span> eliminated{data.eliminatorName ? ` by ${data.eliminatorName}` : ''} (#{data.position})</span>,
     PLAYER_REBUY: () => <span className="text-yellow-400"><span className="text-white">{data.playerName || 'Player'}</span> rebought in</span>,
-    GAME_ENDED: () => <span className="text-blue-400">Game completed</span>,
-    TIMER_PAUSED: () => <span className="text-pkr-gold-300/50">Timer paused</span>,
-    TIMER_RESUMED: () => <span className="text-pkr-gold-300/50">Timer resumed</span>,
+    GAME_ENDED: () => <span className="text-chip-blue">Game completed</span>,
+    TIMER_PAUSED: () => <span className="text-white/50">Timer paused</span>,
+    TIMER_RESUMED: () => <span className="text-white/50">Timer resumed</span>,
     BLIND_LEVEL_UP: () => <span className="text-purple-400">Blinds up to Level {data.level}</span>
   }
 
   const render = messages[event.event_type]
-  if (!render) return <span className="text-pkr-gold-300/40">{event.event_type}</span>
+  if (!render) return <span className="text-white/40">{event.event_type}</span>
   return render()
 }

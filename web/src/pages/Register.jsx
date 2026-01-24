@@ -27,54 +27,85 @@ export function Register() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pkr-green-800 to-pkr-green-950 flex flex-col items-center justify-center p-4">
-      <h1 className="text-4xl font-display font-bold text-pkr-gold-400 mb-8">PKR Night</h1>
-      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4 bg-pkr-green-800/50 border border-pkr-green-700/50 rounded-xl p-6">
-        <h2 className="text-2xl font-display font-bold text-white text-center">Create Account</h2>
-        {error && <p className="text-red-400 text-sm text-center">{error}</p>}
-        <input
-          type="text"
-          placeholder="Display Name"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          className="w-full px-4 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
-          required
-        />
-        <input
-          type="text"
-          placeholder="Full Name (optional)"
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-          className="w-full px-4 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
-        />
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full px-4 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password (min 8 characters)"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full px-4 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
-          required
-          minLength={8}
-        />
+    <div className="min-h-screen flex flex-col px-6 py-12">
+      {/* Header */}
+      <div className="text-center mb-8 mt-8">
+        <div className="text-4xl mb-3">🃏</div>
+        <h1 className="font-display text-2xl text-gold">Create Account</h1>
+        <p className="text-white/60 text-sm mt-1">Join the poker league</p>
+      </div>
+
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="max-w-sm mx-auto w-full">
+        {error && (
+          <div className="bg-red-500/20 border border-red-500 text-red-400 px-4 py-3 rounded-xl mb-4 text-sm">
+            {error}
+          </div>
+        )}
+
+        <div className="mb-4">
+          <label className="label">Display Name</label>
+          <input
+            type="text"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            className="input"
+            placeholder="Johnny"
+            required
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="label">Full Name (optional)</label>
+          <input
+            type="text"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            className="input"
+            placeholder="John Smith"
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="label">Email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="input"
+            placeholder="you@example.com"
+            required
+          />
+        </div>
+
+        <div className="mb-6">
+          <label className="label">Password</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="input"
+            placeholder="••••••••"
+            required
+            minLength={8}
+          />
+          <p className="text-xs text-white/40 mt-1">Must be at least 8 characters</p>
+        </div>
+
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-2.5 bg-pkr-gold-500 text-pkr-green-900 rounded-lg hover:bg-pkr-gold-400 disabled:opacity-50 transition-colors font-medium"
+          className="btn btn-primary w-full py-3 disabled:opacity-50"
         >
           {loading ? 'Creating account...' : 'Create Account'}
         </button>
-        <p className="text-pkr-gold-300/50 text-sm text-center">
+
+        <div className="text-center mt-6 text-sm text-white/60">
           Already have an account?{' '}
-          <Link to="/login" className="text-pkr-gold-400 hover:underline">Sign In</Link>
-        </p>
+          <Link to="/login" className="text-gold hover:underline">
+            Sign In
+          </Link>
+        </div>
       </form>
     </div>
   )

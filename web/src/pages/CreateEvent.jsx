@@ -44,7 +44,6 @@ export function CreateEvent() {
       setPointsStructures(points.structures)
       setSavedLocations(locs.locations || [])
 
-      // Pre-select defaults
       const defaultBlind = blinds.structures.find(s => s.is_default)
       if (defaultBlind) setBlindStructureId(defaultBlind.id)
 
@@ -81,7 +80,6 @@ export function CreateEvent() {
     setLoading(true)
     setError('')
     try {
-      // If saving a new location, create it first
       if (saveNewLocation && location.trim()) {
         await api.post(`/api/locations/league/${leagueId}`, { name: location.trim() })
       }
@@ -114,54 +112,33 @@ export function CreateEvent() {
   return (
     <div className="max-w-lg mx-auto space-y-6">
       <div>
-        <Link to={`/leagues/${leagueId}`} className="text-pkr-gold-300/60 hover:text-pkr-gold-300 text-sm">&larr; Back to Dashboard</Link>
-        <h1 className="text-2xl font-display font-bold text-pkr-gold-400 mt-1">Create Event</h1>
+        <Link to={`/leagues/${leagueId}`} className="text-white/40 hover:text-white text-sm">&larr; Back to Dashboard</Link>
+        <h1 className="font-display text-xl text-gold mt-1">Create Event</h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-6 space-y-4">
-        {error && <p className="text-red-400 text-sm">{error}</p>}
+      <form onSubmit={handleSubmit} className="card space-y-4">
+        {error && <div className="bg-red-500/20 border border-red-500 text-red-400 px-3 py-2 rounded-xl text-sm">{error}</div>}
 
         <div>
-          <label className="block text-sm text-pkr-gold-300/50 mb-1">Title *</label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
-            required
-          />
+          <label className="label">Title *</label>
+          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="input" required />
         </div>
 
         <div>
-          <label className="block text-sm text-pkr-gold-300/50 mb-1">Description</label>
-          <input
-            type="text"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
-          />
+          <label className="label">Description</label>
+          <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="input" />
         </div>
 
         <div>
-          <label className="block text-sm text-pkr-gold-300/50 mb-1">Date & Time *</label>
-          <input
-            type="datetime-local"
-            value={scheduledAt}
-            onChange={(e) => setScheduledAt(e.target.value)}
-            className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
-            required
-          />
+          <label className="label">Date & Time *</label>
+          <input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} className="input" required />
         </div>
 
         <div>
-          <label className="block text-sm text-pkr-gold-300/50 mb-1">Location</label>
+          <label className="label">Location</label>
           {savedLocations.length > 0 ? (
             <div className="space-y-2">
-              <select
-                value={locationId || (saveNewLocation ? '__new__' : '')}
-                onChange={handleLocationSelect}
-                className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
-              >
+              <select value={locationId || (saveNewLocation ? '__new__' : '')} onChange={handleLocationSelect} className="input">
                 <option value="">No location</option>
                 {savedLocations.map(loc => (
                   <option key={loc.id} value={loc.id}>{loc.name}{loc.address ? ` - ${loc.address}` : ''}</option>
@@ -169,91 +146,40 @@ export function CreateEvent() {
                 <option value="__new__">+ New location...</option>
               </select>
               {saveNewLocation && (
-                <div className="flex gap-2 items-center">
-                  <input
-                    type="text"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    className="flex-1 px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
-                    placeholder="New location name"
-                  />
-                  <label className="flex items-center gap-1 text-xs text-pkr-gold-300/50 whitespace-nowrap">
-                    <input type="checkbox" checked={saveNewLocation} onChange={e => setSaveNewLocation(e.target.checked)} className="rounded border-pkr-green-600 bg-pkr-green-900 text-pkr-gold-500" />
-                    Save
-                  </label>
-                </div>
+                <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} className="input" placeholder="New location name" />
               )}
             </div>
           ) : (
-            <input
-              type="text"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
-              placeholder="e.g. Joe's house"
-            />
+            <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} className="input" placeholder="e.g. Joe's house" />
           )}
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div>
-            <label className="block text-sm text-pkr-gold-300/50 mb-1">Buy-in ($)</label>
-            <input
-              type="number"
-              min="0"
-              step="1"
-              value={buyInAmount}
-              onChange={(e) => setBuyInAmount(e.target.value)}
-              className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
-              placeholder="0"
-            />
+            <label className="label">Buy-in ($)</label>
+            <input type="number" min="0" step="1" value={buyInAmount} onChange={(e) => setBuyInAmount(e.target.value)} className="input" placeholder="0" />
           </div>
           <div>
-            <label className="block text-sm text-pkr-gold-300/50 mb-1">Max Rebuys</label>
-            <input
-              type="number"
-              min="0"
-              value={maxRebuys}
-              onChange={(e) => setMaxRebuys(e.target.value)}
-              className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
-            />
+            <label className="label">Max Rebuys</label>
+            <input type="number" min="0" value={maxRebuys} onChange={(e) => setMaxRebuys(e.target.value)} className="input" />
           </div>
           <div>
-            <label className="block text-sm text-pkr-gold-300/50 mb-1">Rebuy ($)</label>
-            <input
-              type="number"
-              min="0"
-              step="1"
-              value={rebuyAmount}
-              onChange={(e) => setRebuyAmount(e.target.value)}
-              className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
-              placeholder="0"
-            />
+            <label className="label">Rebuy ($)</label>
+            <input type="number" min="0" step="1" value={rebuyAmount} onChange={(e) => setRebuyAmount(e.target.value)} className="input" placeholder="0" />
           </div>
           <div>
-            <label className="block text-sm text-pkr-gold-300/50 mb-1">Cutoff Level</label>
-            <input
-              type="number"
-              min="0"
-              value={rebuyCutoffLevel}
-              onChange={(e) => setRebuyCutoffLevel(e.target.value)}
-              className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
-              placeholder="0 = no limit"
-            />
+            <label className="label">Cutoff Lvl</label>
+            <input type="number" min="0" value={rebuyCutoffLevel} onChange={(e) => setRebuyCutoffLevel(e.target.value)} className="input" placeholder="0" />
           </div>
         </div>
 
         {/* Structure Dropdowns */}
-        <div className="space-y-3 pt-2 border-t border-pkr-green-700/50">
-          <p className="text-sm text-pkr-gold-300/50 font-medium">Tournament Structures</p>
+        <div className="space-y-3 pt-4 border-t border-white/10">
+          <p className="text-sm text-white/50 font-medium">Tournament Structures</p>
 
           <div>
-            <label className="block text-sm text-pkr-gold-300/50 mb-1">Blind Structure</label>
-            <select
-              value={blindStructureId}
-              onChange={(e) => setBlindStructureId(e.target.value)}
-              className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
-            >
+            <label className="label">Blind Structure</label>
+            <select value={blindStructureId} onChange={(e) => setBlindStructureId(e.target.value)} className="input">
               <option value="">None</option>
               {blindStructures.map(s => (
                 <option key={s.id} value={s.id}>{s.name}{s.is_default ? ' (default)' : ''}</option>
@@ -262,12 +188,8 @@ export function CreateEvent() {
           </div>
 
           <div>
-            <label className="block text-sm text-pkr-gold-300/50 mb-1">Payout Structure</label>
-            <select
-              value={payoutStructureId}
-              onChange={(e) => setPayoutStructureId(e.target.value)}
-              className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
-            >
+            <label className="label">Payout Structure</label>
+            <select value={payoutStructureId} onChange={(e) => setPayoutStructureId(e.target.value)} className="input">
               <option value="">None</option>
               {payoutStructures.map(s => (
                 <option key={s.id} value={s.id}>{s.name}{s.is_default ? ' (default)' : ''}</option>
@@ -276,12 +198,8 @@ export function CreateEvent() {
           </div>
 
           <div>
-            <label className="block text-sm text-pkr-gold-300/50 mb-1">Points Structure</label>
-            <select
-              value={pointsStructureId}
-              onChange={(e) => setPointsStructureId(e.target.value)}
-              className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
-            >
+            <label className="label">Points Structure</label>
+            <select value={pointsStructureId} onChange={(e) => setPointsStructureId(e.target.value)} className="input">
               <option value="">None</option>
               {pointsStructures.map(s => (
                 <option key={s.id} value={s.id}>{s.name}{s.is_default ? ' (default)' : ''}</option>
@@ -291,17 +209,10 @@ export function CreateEvent() {
         </div>
 
         <div className="flex gap-3 pt-2">
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-5 py-2 bg-pkr-gold-500 text-pkr-green-900 rounded-lg hover:bg-pkr-gold-400 font-medium disabled:opacity-50 transition-colors"
-          >
+          <button type="submit" disabled={loading} className="btn btn-primary disabled:opacity-50">
             {loading ? 'Creating...' : 'Create Event'}
           </button>
-          <Link
-            to={`/leagues/${leagueId}`}
-            className="px-5 py-2 text-pkr-gold-300/50 hover:text-white transition-colors"
-          >
+          <Link to={`/leagues/${leagueId}`} className="btn btn-secondary">
             Cancel
           </Link>
         </div>
