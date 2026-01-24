@@ -25,7 +25,7 @@ function ProtectedRoute({ children }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-pkr-green-950 flex items-center justify-center">
         <Spinner size="lg" />
       </div>
     )
@@ -43,7 +43,7 @@ function PublicRoute({ children }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-pkr-green-950 flex items-center justify-center">
         <Spinner size="lg" />
       </div>
     )

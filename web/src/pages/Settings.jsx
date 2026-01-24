@@ -22,7 +22,7 @@ export function Settings() {
   if (error) return (
     <div className="text-center py-20">
       <p className="text-red-400 mb-4">{error}</p>
-      <Link to={`/leagues/${leagueId}`} className="text-green-400 hover:underline">Back to Dashboard</Link>
+      <Link to={`/leagues/${leagueId}`} className="text-pkr-gold-400 hover:underline">Back to Dashboard</Link>
     </div>
   )
 
@@ -31,17 +31,17 @@ export function Settings() {
   return (
     <div className="space-y-6">
       <div>
-        <Link to={`/leagues/${leagueId}`} className="text-gray-400 hover:text-white text-sm">&larr; {league?.name || 'Dashboard'}</Link>
-        <h1 className="text-2xl font-bold text-white mt-1">League Settings</h1>
+        <Link to={`/leagues/${leagueId}`} className="text-pkr-gold-300/60 hover:text-pkr-gold-300 text-sm">&larr; {league?.name || 'Dashboard'}</Link>
+        <h1 className="text-2xl font-display font-bold text-pkr-gold-400 mt-1">League Settings</h1>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-800 rounded-lg p-1 overflow-x-auto">
+      <div className="flex gap-1 bg-pkr-green-900 border border-pkr-green-700/50 rounded-lg p-1 overflow-x-auto">
         {[['blinds', 'Blinds'], ['payouts', 'Payouts'], ['points', 'Points'], ['roles', 'Roles'], ['dues', 'Dues'], ['locations', 'Locations'], ['league', 'League']].map(([key, label]) => (
           <button
             key={key}
             onClick={() => { setTab(key); setSearchParams({ tab: key }) }}
-            className={`flex-1 px-3 py-2 text-sm rounded-md transition-colors whitespace-nowrap ${tab === key ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'}`}
+            className={`flex-1 px-3 py-2 text-sm rounded-md transition-colors whitespace-nowrap ${tab === key ? 'bg-pkr-gold-500 text-pkr-green-900' : 'text-pkr-gold-300/50 hover:text-white'}`}
           >
             {label}
           </button>
@@ -85,7 +85,7 @@ function BlindStructures({ leagueId, isAdmin }) {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-white">Blind Structures</h2>
         {isAdmin && (
-          <button onClick={() => { setShowCreate(true); setEditing(null) }} className="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700">
+          <button onClick={() => { setShowCreate(true); setEditing(null) }} className="px-3 py-1.5 text-sm bg-pkr-gold-500 text-pkr-green-900 rounded-lg hover:bg-pkr-gold-400 font-medium">
             New Structure
           </button>
         )}
@@ -100,20 +100,20 @@ function BlindStructures({ leagueId, isAdmin }) {
       )}
 
       {structures.length === 0 && !showCreate ? (
-        <p className="text-gray-400 text-sm">No blind structures configured.</p>
+        <p className="text-pkr-gold-300/50 text-sm">No blind structures configured.</p>
       ) : (
         <div className="space-y-2">
           {structures.map(s => (
-            <div key={s.id} className="bg-gray-800 border border-gray-700 rounded-lg p-4 flex items-center justify-between">
+            <div key={s.id} className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-4 flex items-center justify-between">
               <div>
                 <span className="text-white font-medium">{s.name}</span>
                 {s.is_default && <span className="ml-2 px-2 py-0.5 text-xs bg-green-900 text-green-300 rounded-full">default</span>}
-                <span className="text-gray-500 text-sm ml-3">{s.level_count} levels</span>
+                <span className="text-pkr-gold-300/40 text-sm ml-3">{s.level_count} levels</span>
               </div>
               {isAdmin && (
                 <div className="flex gap-2">
                   {!s.is_default && (
-                    <button onClick={async () => { await api.post(`/api/structures/blinds/${s.id}/set-default`); fetchStructures() }} className="text-xs text-gray-400 hover:text-white">Set Default</button>
+                    <button onClick={async () => { await api.post(`/api/structures/blinds/${s.id}/set-default`); fetchStructures() }} className="text-xs text-pkr-gold-300/50 hover:text-white">Set Default</button>
                   )}
                   <button onClick={() => { setEditing(s.id); setShowCreate(false) }} className="text-xs text-blue-400 hover:text-blue-300">Edit</button>
                   <button onClick={async () => { if (confirm('Delete this structure?')) { try { await api.delete(`/api/structures/blinds/${s.id}`); fetchStructures() } catch (e) { alert(e.message) } } }} className="text-xs text-red-400 hover:text-red-300">Delete</button>
@@ -185,35 +185,35 @@ function BlindEditor({ leagueId, structureId, onDone, onCancel }) {
   if (loading) return <PageSpinner />
 
   return (
-    <form onSubmit={handleSubmit} className="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-4">
+    <form onSubmit={handleSubmit} className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-4 space-y-4">
       <h3 className="text-white font-semibold">{structureId ? 'Edit' : 'New'} Blind Structure</h3>
       {error && <p className="text-red-400 text-sm">{error}</p>}
 
       <input type="text" placeholder="Structure Name" value={name} onChange={e => setName(e.target.value)}
-        className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none" required />
+        className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30" required />
 
       <div className="space-y-2">
-        <div className="grid grid-cols-6 gap-2 text-xs text-gray-400 px-1">
+        <div className="grid grid-cols-6 gap-2 text-xs text-pkr-gold-300/50 px-1">
           <span>Lvl</span><span>SB</span><span>BB</span><span>Ante</span><span>Min</span><span></span>
         </div>
         {levels.map((level, idx) => (
           <div key={idx} className="grid grid-cols-6 gap-2">
-            <input type="number" value={level.levelNumber} readOnly className="px-2 py-1 bg-gray-900 text-gray-500 rounded border border-gray-700 text-sm" />
-            <input type="number" min="1" value={level.smallBlind} onChange={e => updateLevel(idx, 'smallBlind', e.target.value)} className="px-2 py-1 bg-gray-900 text-white rounded border border-gray-700 text-sm focus:border-green-500 focus:outline-none" />
-            <input type="number" min="1" value={level.bigBlind} onChange={e => updateLevel(idx, 'bigBlind', e.target.value)} className="px-2 py-1 bg-gray-900 text-white rounded border border-gray-700 text-sm focus:border-green-500 focus:outline-none" />
-            <input type="number" min="0" value={level.ante} onChange={e => updateLevel(idx, 'ante', e.target.value)} className="px-2 py-1 bg-gray-900 text-white rounded border border-gray-700 text-sm focus:border-green-500 focus:outline-none" />
-            <input type="number" min="1" value={level.durationMinutes} onChange={e => updateLevel(idx, 'durationMinutes', e.target.value)} className="px-2 py-1 bg-gray-900 text-white rounded border border-gray-700 text-sm focus:border-green-500 focus:outline-none" />
+            <input type="number" value={level.levelNumber} readOnly className="px-2 py-1 bg-pkr-green-900 text-pkr-gold-300/40 rounded-lg border border-pkr-green-700/50 text-sm" />
+            <input type="number" min="1" value={level.smallBlind} onChange={e => updateLevel(idx, 'smallBlind', e.target.value)} className="px-2 py-1 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 text-sm focus:border-pkr-gold-500 focus:outline-none" />
+            <input type="number" min="1" value={level.bigBlind} onChange={e => updateLevel(idx, 'bigBlind', e.target.value)} className="px-2 py-1 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 text-sm focus:border-pkr-gold-500 focus:outline-none" />
+            <input type="number" min="0" value={level.ante} onChange={e => updateLevel(idx, 'ante', e.target.value)} className="px-2 py-1 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 text-sm focus:border-pkr-gold-500 focus:outline-none" />
+            <input type="number" min="1" value={level.durationMinutes} onChange={e => updateLevel(idx, 'durationMinutes', e.target.value)} className="px-2 py-1 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 text-sm focus:border-pkr-gold-500 focus:outline-none" />
             <button type="button" onClick={() => removeLevel(idx)} className="text-red-400 hover:text-red-300 text-sm">x</button>
           </div>
         ))}
-        <button type="button" onClick={addLevel} className="text-sm text-green-400 hover:text-green-300">+ Add Level</button>
+        <button type="button" onClick={addLevel} className="text-sm text-pkr-gold-400 hover:text-pkr-gold-300">+ Add Level</button>
       </div>
 
       <div className="flex gap-2">
-        <button type="submit" disabled={saving} className="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50">
+        <button type="submit" disabled={saving} className="px-4 py-2 text-sm bg-pkr-gold-500 text-pkr-green-900 rounded-lg hover:bg-pkr-gold-400 font-medium disabled:opacity-50">
           {saving ? 'Saving...' : 'Save'}
         </button>
-        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancel</button>
+        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-pkr-gold-300/50 hover:text-white">Cancel</button>
       </div>
     </form>
   )
@@ -245,7 +245,7 @@ function PayoutStructures({ leagueId, isAdmin }) {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-white">Payout Structures</h2>
         {isAdmin && (
-          <button onClick={() => { setShowCreate(true); setEditing(null) }} className="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700">
+          <button onClick={() => { setShowCreate(true); setEditing(null) }} className="px-3 py-1.5 text-sm bg-pkr-gold-500 text-pkr-green-900 rounded-lg hover:bg-pkr-gold-400 font-medium">
             New Structure
           </button>
         )}
@@ -260,20 +260,20 @@ function PayoutStructures({ leagueId, isAdmin }) {
       )}
 
       {structures.length === 0 && !showCreate ? (
-        <p className="text-gray-400 text-sm">No payout structures configured.</p>
+        <p className="text-pkr-gold-300/50 text-sm">No payout structures configured.</p>
       ) : (
         <div className="space-y-2">
           {structures.map(s => (
-            <div key={s.id} className="bg-gray-800 border border-gray-700 rounded-lg p-4 flex items-center justify-between">
+            <div key={s.id} className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-4 flex items-center justify-between">
               <div>
                 <span className="text-white font-medium">{s.name}</span>
                 {s.is_default && <span className="ml-2 px-2 py-0.5 text-xs bg-green-900 text-green-300 rounded-full">default</span>}
-                <span className="text-gray-500 text-sm ml-3">{s.tier_count} tiers</span>
+                <span className="text-pkr-gold-300/40 text-sm ml-3">{s.tier_count} tiers</span>
               </div>
               {isAdmin && (
                 <div className="flex gap-2">
                   {!s.is_default && (
-                    <button onClick={async () => { await api.post(`/api/structures/payouts/${s.id}/set-default`); fetchStructures() }} className="text-xs text-gray-400 hover:text-white">Set Default</button>
+                    <button onClick={async () => { await api.post(`/api/structures/payouts/${s.id}/set-default`); fetchStructures() }} className="text-xs text-pkr-gold-300/50 hover:text-white">Set Default</button>
                   )}
                   <button onClick={() => { setEditing(s.id); setShowCreate(false) }} className="text-xs text-blue-400 hover:text-blue-300">Edit</button>
                   <button onClick={async () => { if (confirm('Delete this structure?')) { try { await api.delete(`/api/structures/payouts/${s.id}`); fetchStructures() } catch (e) { alert(e.message) } } }} className="text-xs text-red-400 hover:text-red-300">Delete</button>
@@ -341,37 +341,37 @@ function PayoutEditor({ leagueId, structureId, onDone, onCancel }) {
   if (loading) return <PageSpinner />
 
   return (
-    <form onSubmit={handleSubmit} className="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-4">
+    <form onSubmit={handleSubmit} className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-4 space-y-4">
       <h3 className="text-white font-semibold">{structureId ? 'Edit' : 'New'} Payout Structure</h3>
       {error && <p className="text-red-400 text-sm">{error}</p>}
 
       <input type="text" placeholder="Structure Name" value={name} onChange={e => setName(e.target.value)}
-        className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none" required />
+        className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30" required />
 
       <div className="space-y-2">
-        <div className="grid grid-cols-8 gap-1 text-xs text-gray-400 px-1">
+        <div className="grid grid-cols-8 gap-1 text-xs text-pkr-gold-300/50 px-1">
           <span>Min</span><span>Max</span><span>1st%</span><span>2nd%</span><span>3rd%</span><span>4th%</span><span>5th%</span><span></span>
         </div>
         {tiers.map((tier, idx) => (
           <div key={idx} className="grid grid-cols-8 gap-1">
-            <input type="number" min="2" value={tier.minPlayers} onChange={e => updateTier(idx, 'minPlayers', e.target.value)} className="px-2 py-1 bg-gray-900 text-white rounded border border-gray-700 text-sm focus:border-green-500 focus:outline-none" />
-            <input type="number" min="2" value={tier.maxPlayers} onChange={e => updateTier(idx, 'maxPlayers', e.target.value)} className="px-2 py-1 bg-gray-900 text-white rounded border border-gray-700 text-sm focus:border-green-500 focus:outline-none" />
-            <input type="number" min="0" max="100" value={tier.firstPlacePct} onChange={e => updateTier(idx, 'firstPlacePct', e.target.value)} className="px-2 py-1 bg-gray-900 text-white rounded border border-gray-700 text-sm focus:border-green-500 focus:outline-none" />
-            <input type="number" min="0" max="100" value={tier.secondPlacePct} onChange={e => updateTier(idx, 'secondPlacePct', e.target.value)} className="px-2 py-1 bg-gray-900 text-white rounded border border-gray-700 text-sm focus:border-green-500 focus:outline-none" />
-            <input type="number" min="0" max="100" value={tier.thirdPlacePct} onChange={e => updateTier(idx, 'thirdPlacePct', e.target.value)} className="px-2 py-1 bg-gray-900 text-white rounded border border-gray-700 text-sm focus:border-green-500 focus:outline-none" />
-            <input type="number" min="0" max="100" value={tier.fourthPlacePct} onChange={e => updateTier(idx, 'fourthPlacePct', e.target.value)} className="px-2 py-1 bg-gray-900 text-white rounded border border-gray-700 text-sm focus:border-green-500 focus:outline-none" />
-            <input type="number" min="0" max="100" value={tier.fifthPlacePct} onChange={e => updateTier(idx, 'fifthPlacePct', e.target.value)} className="px-2 py-1 bg-gray-900 text-white rounded border border-gray-700 text-sm focus:border-green-500 focus:outline-none" />
+            <input type="number" min="2" value={tier.minPlayers} onChange={e => updateTier(idx, 'minPlayers', e.target.value)} className="px-2 py-1 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 text-sm focus:border-pkr-gold-500 focus:outline-none" />
+            <input type="number" min="2" value={tier.maxPlayers} onChange={e => updateTier(idx, 'maxPlayers', e.target.value)} className="px-2 py-1 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 text-sm focus:border-pkr-gold-500 focus:outline-none" />
+            <input type="number" min="0" max="100" value={tier.firstPlacePct} onChange={e => updateTier(idx, 'firstPlacePct', e.target.value)} className="px-2 py-1 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 text-sm focus:border-pkr-gold-500 focus:outline-none" />
+            <input type="number" min="0" max="100" value={tier.secondPlacePct} onChange={e => updateTier(idx, 'secondPlacePct', e.target.value)} className="px-2 py-1 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 text-sm focus:border-pkr-gold-500 focus:outline-none" />
+            <input type="number" min="0" max="100" value={tier.thirdPlacePct} onChange={e => updateTier(idx, 'thirdPlacePct', e.target.value)} className="px-2 py-1 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 text-sm focus:border-pkr-gold-500 focus:outline-none" />
+            <input type="number" min="0" max="100" value={tier.fourthPlacePct} onChange={e => updateTier(idx, 'fourthPlacePct', e.target.value)} className="px-2 py-1 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 text-sm focus:border-pkr-gold-500 focus:outline-none" />
+            <input type="number" min="0" max="100" value={tier.fifthPlacePct} onChange={e => updateTier(idx, 'fifthPlacePct', e.target.value)} className="px-2 py-1 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 text-sm focus:border-pkr-gold-500 focus:outline-none" />
             <button type="button" onClick={() => removeTier(idx)} className="text-red-400 hover:text-red-300 text-sm">x</button>
           </div>
         ))}
-        <button type="button" onClick={addTier} className="text-sm text-green-400 hover:text-green-300">+ Add Tier</button>
+        <button type="button" onClick={addTier} className="text-sm text-pkr-gold-400 hover:text-pkr-gold-300">+ Add Tier</button>
       </div>
 
       <div className="flex gap-2">
-        <button type="submit" disabled={saving} className="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50">
+        <button type="submit" disabled={saving} className="px-4 py-2 text-sm bg-pkr-gold-500 text-pkr-green-900 rounded-lg hover:bg-pkr-gold-400 font-medium disabled:opacity-50">
           {saving ? 'Saving...' : 'Save'}
         </button>
-        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancel</button>
+        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-pkr-gold-300/50 hover:text-white">Cancel</button>
       </div>
     </form>
   )
@@ -403,7 +403,7 @@ function PointsStructures({ leagueId, isAdmin }) {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-white">Points Structures</h2>
         {isAdmin && (
-          <button onClick={() => { setShowCreate(true); setEditing(null) }} className="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700">
+          <button onClick={() => { setShowCreate(true); setEditing(null) }} className="px-3 py-1.5 text-sm bg-pkr-gold-500 text-pkr-green-900 rounded-lg hover:bg-pkr-gold-400 font-medium">
             New Structure
           </button>
         )}
@@ -418,22 +418,22 @@ function PointsStructures({ leagueId, isAdmin }) {
       )}
 
       {structures.length === 0 && !showCreate ? (
-        <p className="text-gray-400 text-sm">No points structures configured.</p>
+        <p className="text-pkr-gold-300/50 text-sm">No points structures configured.</p>
       ) : (
         <div className="space-y-2">
           {structures.map(s => (
-            <div key={s.id} className="bg-gray-800 border border-gray-700 rounded-lg p-4 flex items-center justify-between">
+            <div key={s.id} className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-4 flex items-center justify-between">
               <div>
                 <span className="text-white font-medium">{s.name}</span>
                 {s.is_default && <span className="ml-2 px-2 py-0.5 text-xs bg-green-900 text-green-300 rounded-full">default</span>}
-                <span className="text-gray-500 text-sm ml-3">
+                <span className="text-pkr-gold-300/40 text-sm ml-3">
                   {s.participation_points}pp / {s.bounty_points}bp
                 </span>
               </div>
               {isAdmin && (
                 <div className="flex gap-2">
                   {!s.is_default && (
-                    <button onClick={async () => { await api.post(`/api/structures/points/${s.id}/set-default`); fetchStructures() }} className="text-xs text-gray-400 hover:text-white">Set Default</button>
+                    <button onClick={async () => { await api.post(`/api/structures/points/${s.id}/set-default`); fetchStructures() }} className="text-xs text-pkr-gold-300/50 hover:text-white">Set Default</button>
                   )}
                   <button onClick={() => { setEditing(s.id); setShowCreate(false) }} className="text-xs text-blue-400 hover:text-blue-300">Edit</button>
                   <button onClick={async () => { if (confirm('Delete this structure?')) { try { await api.delete(`/api/structures/points/${s.id}`); fetchStructures() } catch (e) { alert(e.message) } } }} className="text-xs text-red-400 hover:text-red-300">Delete</button>
@@ -482,13 +482,13 @@ function RolesManager({ leagueId, isAdmin }) {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-white">Custom Roles</h2>
         {isAdmin && (
-          <button onClick={() => { setShowCreate(true); setEditing(null); setAssigning(null) }} className="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700">
+          <button onClick={() => { setShowCreate(true); setEditing(null); setAssigning(null) }} className="px-3 py-1.5 text-sm bg-pkr-gold-500 text-pkr-green-900 rounded-lg hover:bg-pkr-gold-400 font-medium">
             New Role
           </button>
         )}
       </div>
 
-      <p className="text-sm text-gray-400">
+      <p className="text-sm text-pkr-gold-300/50">
         Create custom roles with specific game permissions. Assign them to members to delegate responsibilities.
       </p>
 
@@ -505,32 +505,32 @@ function RolesManager({ leagueId, isAdmin }) {
       )}
 
       {roles.length === 0 && !showCreate ? (
-        <p className="text-gray-500 text-sm">No custom roles yet.</p>
+        <p className="text-pkr-gold-300/40 text-sm">No custom roles yet.</p>
       ) : (
         <div className="space-y-2">
           {roles.map(r => (
-            <div key={r.id} className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+            <div key={r.id} className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-white font-medium">
                     {r.emoji && <span className="mr-1">{r.emoji}</span>}
                     {r.name}
                   </span>
-                  <span className="text-gray-500 text-sm ml-3">{r.member_count} member{r.member_count !== 1 ? 's' : ''}</span>
+                  <span className="text-pkr-gold-300/40 text-sm ml-3">{r.member_count} member{r.member_count !== 1 ? 's' : ''}</span>
                 </div>
                 {isAdmin && (
                   <div className="flex gap-2">
-                    <button onClick={() => { setAssigning(r.id); setEditing(null); setShowCreate(false) }} className="text-xs text-green-400 hover:text-green-300">Members</button>
+                    <button onClick={() => { setAssigning(r.id); setEditing(null); setShowCreate(false) }} className="text-xs text-pkr-gold-400 hover:text-pkr-gold-300">Members</button>
                     <button onClick={() => { setEditing(r.id); setShowCreate(false); setAssigning(null) }} className="text-xs text-blue-400 hover:text-blue-300">Edit</button>
                     <button onClick={() => deleteRole(r.id)} className="text-xs text-red-400 hover:text-red-300">Delete</button>
                   </div>
                 )}
               </div>
-              {r.description && <p className="text-gray-500 text-sm mt-1">{r.description}</p>}
+              {r.description && <p className="text-pkr-gold-300/40 text-sm mt-1">{r.description}</p>}
               {r.permissions && (
                 <div className="flex flex-wrap gap-1 mt-2">
                   {(typeof r.permissions === 'string' ? JSON.parse(r.permissions) : r.permissions).map(p => (
-                    <span key={p} className="px-2 py-0.5 text-xs bg-gray-700 text-gray-300 rounded">
+                    <span key={p} className="px-2 py-0.5 text-xs bg-pkr-green-700 text-pkr-gold-300/70 rounded">
                       {p.replace(/_/g, ' ')}
                     </span>
                   ))}
@@ -600,42 +600,42 @@ function RoleEditor({ leagueId, roleId, onDone, onCancel }) {
   if (loading) return <PageSpinner />
 
   return (
-    <form onSubmit={handleSubmit} className="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-4">
+    <form onSubmit={handleSubmit} className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-4 space-y-4">
       <h3 className="text-white font-semibold">{roleId ? 'Edit' : 'New'} Role</h3>
       {error && <p className="text-red-400 text-sm">{error}</p>}
 
       <div className="grid grid-cols-4 gap-3">
         <div className="col-span-3">
           <input type="text" placeholder="Role Name" value={name} onChange={e => setName(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none" required />
+            className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30" required />
         </div>
         <div>
           <input type="text" placeholder="Emoji" value={emoji} onChange={e => setEmoji(e.target.value)} maxLength={2}
-            className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none text-center" />
+            className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30 text-center" />
         </div>
       </div>
 
       <input type="text" placeholder="Description (optional)" value={description} onChange={e => setDescription(e.target.value)}
-        className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none" />
+        className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30" />
 
       <div>
-        <label className="block text-sm text-gray-400 mb-2">Permissions</label>
+        <label className="block text-sm text-pkr-gold-300/50 mb-2">Permissions</label>
         <div className="grid grid-cols-2 gap-2">
           {ALL_PERMISSIONS.map(p => (
             <label key={p.key} className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={permissions.includes(p.key)} onChange={() => togglePermission(p.key)}
-                className="rounded border-gray-600 bg-gray-900 text-green-500 focus:ring-green-500" />
-              <span className="text-sm text-gray-300">{p.label}</span>
+                className="rounded border-pkr-green-600 bg-pkr-green-900 text-pkr-gold-500 focus:ring-pkr-gold-500" />
+              <span className="text-sm text-pkr-gold-300/70">{p.label}</span>
             </label>
           ))}
         </div>
       </div>
 
       <div className="flex gap-2">
-        <button type="submit" disabled={saving} className="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50">
+        <button type="submit" disabled={saving} className="px-4 py-2 text-sm bg-pkr-gold-500 text-pkr-green-900 rounded-lg hover:bg-pkr-gold-400 font-medium disabled:opacity-50">
           {saving ? 'Saving...' : 'Save'}
         </button>
-        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancel</button>
+        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-pkr-gold-300/50 hover:text-white">Cancel</button>
       </div>
     </form>
   )
@@ -681,21 +681,21 @@ function RoleAssigner({ leagueId, roleId, onDone, onCancel }) {
   const unassigned = allMembers.filter(m => !assignedIds.has(m.user_id))
 
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-4">
+    <div className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-4 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-white font-semibold">
           {role?.emoji && <span className="mr-1">{role.emoji}</span>}
           {role?.name} - Members
         </h3>
-        <button onClick={onCancel} className="text-sm text-gray-400 hover:text-white">Close</button>
+        <button onClick={onCancel} className="text-sm text-pkr-gold-300/50 hover:text-white">Close</button>
       </div>
 
       {assignedMembers.length > 0 && (
         <div>
-          <p className="text-xs text-gray-500 mb-2">Assigned</p>
+          <p className="text-xs text-pkr-gold-300/40 mb-2">Assigned</p>
           <div className="space-y-1">
             {assignedMembers.map(m => (
-              <div key={m.user_id} className="flex items-center justify-between py-1.5 px-2 bg-gray-900 rounded">
+              <div key={m.user_id} className="flex items-center justify-between py-1.5 px-2 bg-pkr-green-900 rounded">
                 <span className="text-sm text-white">{m.display_name}</span>
                 <button onClick={() => unassignMember(m.user_id)} className="text-xs text-red-400 hover:text-red-300">Remove</button>
               </div>
@@ -706,19 +706,19 @@ function RoleAssigner({ leagueId, roleId, onDone, onCancel }) {
 
       {unassigned.length > 0 && (
         <div>
-          <p className="text-xs text-gray-500 mb-2">Available Members</p>
+          <p className="text-xs text-pkr-gold-300/40 mb-2">Available Members</p>
           <div className="space-y-1">
             {unassigned.map(m => (
-              <div key={m.id} className="flex items-center justify-between py-1.5 px-2 bg-gray-900 rounded">
-                <span className="text-sm text-gray-300">{m.display_name}</span>
-                <button onClick={() => assignMember(m.user_id)} className="text-xs text-green-400 hover:text-green-300">Assign</button>
+              <div key={m.id} className="flex items-center justify-between py-1.5 px-2 bg-pkr-green-900 rounded">
+                <span className="text-sm text-pkr-gold-300/70">{m.display_name}</span>
+                <button onClick={() => assignMember(m.user_id)} className="text-xs text-pkr-gold-400 hover:text-pkr-gold-300">Assign</button>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      <button onClick={onDone} className="px-4 py-2 text-sm bg-gray-700 text-white rounded hover:bg-gray-600">Done</button>
+      <button onClick={onDone} className="px-4 py-2 text-sm bg-pkr-gold-500 text-pkr-green-900 rounded hover:bg-pkr-green-600">Done</button>
     </div>
   )
 }
@@ -771,20 +771,20 @@ function DuesManager({ leagueId, isAdmin }) {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-white">Dues - {year}</h2>
         {isAdmin && (
-          <button onClick={() => setShowPayment(!showPayment)} className="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700">
+          <button onClick={() => setShowPayment(!showPayment)} className="px-3 py-1.5 text-sm bg-pkr-gold-500 text-pkr-green-900 rounded-lg hover:bg-pkr-gold-400 font-medium">
             Record Payment
           </button>
         )}
       </div>
 
       {annualDues > 0 && (
-        <p className="text-gray-400 text-sm">Annual dues: ${annualDues.toFixed(2)}</p>
+        <p className="text-pkr-gold-300/50 text-sm">Annual dues: ${annualDues.toFixed(2)}</p>
       )}
 
       {showPayment && (
-        <form onSubmit={handleRecordPayment} className="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-3">
+        <form onSubmit={handleRecordPayment} className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-4 space-y-3">
           <select value={selectedUser} onChange={e => setSelectedUser(e.target.value)} required
-            className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 text-sm focus:border-green-500 focus:outline-none">
+            className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 text-sm focus:border-pkr-gold-500 focus:outline-none">
             <option value="">Select member...</option>
             {members.map(m => (
               <option key={m.user_id} value={m.user_id}>{m.display_name}</option>
@@ -792,21 +792,21 @@ function DuesManager({ leagueId, isAdmin }) {
           </select>
           <input type="number" step="0.01" min="0.01" placeholder="Amount" value={paymentAmount}
             onChange={e => setPaymentAmount(e.target.value)} required
-            className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 text-sm focus:border-green-500 focus:outline-none" />
+            className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 text-sm focus:border-pkr-gold-500 focus:outline-none" />
           <input type="text" placeholder="Notes (optional)" value={paymentNotes}
             onChange={e => setPaymentNotes(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 text-sm focus:border-green-500 focus:outline-none" />
+            className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 text-sm focus:border-pkr-gold-500 focus:outline-none" />
           <div className="flex gap-2">
-            <button type="submit" disabled={saving} className="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50">
+            <button type="submit" disabled={saving} className="px-4 py-2 text-sm bg-pkr-gold-500 text-pkr-green-900 rounded-lg hover:bg-pkr-gold-400 font-medium disabled:opacity-50">
               {saving ? 'Saving...' : 'Record'}
             </button>
-            <button type="button" onClick={() => setShowPayment(false)} className="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancel</button>
+            <button type="button" onClick={() => setShowPayment(false)} className="px-4 py-2 text-sm text-pkr-gold-300/50 hover:text-white">Cancel</button>
           </div>
         </form>
       )}
 
       {/* Members dues status */}
-      <div className="bg-gray-800 border border-gray-700 rounded-lg divide-y divide-gray-700">
+      <div className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg divide-y divide-pkr-green-700/50">
         {members.map(m => {
           const paid = parseFloat(m.total_paid)
           const isPaid = annualDues > 0 ? paid >= annualDues : paid > 0
@@ -814,10 +814,10 @@ function DuesManager({ leagueId, isAdmin }) {
             <div key={m.user_id} className="px-4 py-3 flex items-center justify-between">
               <div>
                 <span className="text-white text-sm">{m.display_name}</span>
-                <span className="text-gray-500 text-xs ml-2">{m.member_type}</span>
+                <span className="text-pkr-gold-300/40 text-xs ml-2">{m.member_type}</span>
               </div>
               <div className="flex items-center gap-3">
-                {paid > 0 && <span className="text-gray-400 text-sm">${paid.toFixed(2)}</span>}
+                {paid > 0 && <span className="text-pkr-gold-300/50 text-sm">${paid.toFixed(2)}</span>}
                 <span className={`px-2 py-0.5 text-xs rounded-full ${isPaid ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>
                   {isPaid ? 'Paid' : 'Unpaid'}
                 </span>
@@ -830,17 +830,17 @@ function DuesManager({ leagueId, isAdmin }) {
       {/* Payment History */}
       {payments.length > 0 && (
         <div>
-          <h3 className="text-sm font-medium text-gray-400 uppercase mb-2">Payment History</h3>
-          <div className="bg-gray-800 border border-gray-700 rounded-lg divide-y divide-gray-700">
+          <h3 className="text-sm font-medium text-pkr-gold-300/50 uppercase mb-2">Payment History</h3>
+          <div className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg divide-y divide-pkr-green-700/50">
             {payments.slice(0, 10).map(p => (
               <div key={p.id} className="px-4 py-2 flex items-center justify-between">
                 <div>
                   <span className="text-white text-sm">{p.display_name}</span>
-                  {p.notes && <span className="text-gray-500 text-xs ml-2">{p.notes}</span>}
+                  {p.notes && <span className="text-pkr-gold-300/40 text-xs ml-2">{p.notes}</span>}
                 </div>
                 <div className="text-right">
-                  <span className="text-green-400 text-sm">${parseFloat(p.amount).toFixed(2)}</span>
-                  <p className="text-gray-600 text-xs">{new Date(p.paid_at).toLocaleDateString()}</p>
+                  <span className="text-pkr-gold-400 text-sm">${parseFloat(p.amount).toFixed(2)}</span>
+                  <p className="text-pkr-gold-300/30 text-xs">{new Date(p.paid_at).toLocaleDateString()}</p>
                 </div>
               </div>
             ))}
@@ -922,39 +922,39 @@ function LocationsManager({ leagueId, isAdmin }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-white">Saved Locations</h2>
-        <button onClick={startCreate} className="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700">
+        <button onClick={startCreate} className="px-3 py-1.5 text-sm bg-pkr-gold-500 text-pkr-green-900 rounded-lg hover:bg-pkr-gold-400 font-medium">
           New Location
         </button>
       </div>
 
       {(showCreate || editingId) && (
-        <form onSubmit={handleSubmit} className="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-3">
+        <form onSubmit={handleSubmit} className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-4 space-y-3">
           <h3 className="text-white font-semibold text-sm">{editingId ? 'Edit' : 'New'} Location</h3>
           <input type="text" placeholder="Location Name" value={name} onChange={e => setName(e.target.value)} required
-            className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 text-sm focus:border-green-500 focus:outline-none" />
+            className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 text-sm focus:border-pkr-gold-500 focus:outline-none" />
           <input type="text" placeholder="Address (optional)" value={address} onChange={e => setAddress(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 text-sm focus:border-green-500 focus:outline-none" />
+            className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 text-sm focus:border-pkr-gold-500 focus:outline-none" />
           <input type="text" placeholder="Notes (optional)" value={notes} onChange={e => setNotes(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 text-sm focus:border-green-500 focus:outline-none" />
+            className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 text-sm focus:border-pkr-gold-500 focus:outline-none" />
           <div className="flex gap-2">
-            <button type="submit" disabled={saving} className="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50">
+            <button type="submit" disabled={saving} className="px-4 py-2 text-sm bg-pkr-gold-500 text-pkr-green-900 rounded-lg hover:bg-pkr-gold-400 font-medium disabled:opacity-50">
               {saving ? 'Saving...' : 'Save'}
             </button>
-            <button type="button" onClick={() => { setShowCreate(false); setEditingId(null) }} className="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancel</button>
+            <button type="button" onClick={() => { setShowCreate(false); setEditingId(null) }} className="px-4 py-2 text-sm text-pkr-gold-300/50 hover:text-white">Cancel</button>
           </div>
         </form>
       )}
 
       {locations.length === 0 && !showCreate ? (
-        <p className="text-gray-400 text-sm">No saved locations yet.</p>
+        <p className="text-pkr-gold-300/50 text-sm">No saved locations yet.</p>
       ) : (
         <div className="space-y-2">
           {locations.map(loc => (
-            <div key={loc.id} className="bg-gray-800 border border-gray-700 rounded-lg p-4 flex items-center justify-between">
+            <div key={loc.id} className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-4 flex items-center justify-between">
               <div>
                 <span className="text-white font-medium">{loc.name}</span>
-                {loc.address && <p className="text-gray-500 text-sm">{loc.address}</p>}
-                {loc.notes && <p className="text-gray-600 text-xs mt-0.5">{loc.notes}</p>}
+                {loc.address && <p className="text-pkr-gold-300/40 text-sm">{loc.address}</p>}
+                {loc.notes && <p className="text-pkr-gold-300/30 text-xs mt-0.5">{loc.notes}</p>}
               </div>
               {isAdmin && (
                 <div className="flex gap-2">
@@ -1010,7 +1010,7 @@ function LeagueSettings({ leagueId, isAdmin, league }) {
   }
 
   if (!isAdmin) {
-    return <p className="text-gray-400 text-sm">Only admins can modify league settings.</p>
+    return <p className="text-pkr-gold-300/50 text-sm">Only admins can modify league settings.</p>
   }
 
   const publicUrl = `${window.location.origin}/standings/${leagueId}`
@@ -1020,34 +1020,34 @@ function LeagueSettings({ leagueId, isAdmin, league }) {
       <h2 className="text-lg font-semibold text-white">League Settings</h2>
 
       <div>
-        <label className="block text-sm text-gray-400 mb-1">Annual Dues Amount ($)</label>
+        <label className="block text-sm text-pkr-gold-300/50 mb-1">Annual Dues Amount ($)</label>
         <input type="number" step="0.01" min="0" placeholder="0.00" value={annualDues}
           onChange={e => setAnnualDues(e.target.value)}
-          className="w-full max-w-xs px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none" />
-        <p className="text-gray-600 text-xs mt-1">Set to 0 or leave blank to disable dues tracking.</p>
+          className="w-full max-w-xs px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30" />
+        <p className="text-pkr-gold-300/30 text-xs mt-1">Set to 0 or leave blank to disable dues tracking.</p>
       </div>
 
       <div>
-        <label className="block text-sm text-gray-400 mb-1">Guest Eligibility Threshold</label>
+        <label className="block text-sm text-pkr-gold-300/50 mb-1">Guest Eligibility Threshold</label>
         <input type="number" min="1" placeholder="e.g. 5" value={guestThreshold}
           onChange={e => setGuestThreshold(e.target.value)}
-          className="w-full max-w-xs px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none" />
-        <p className="text-gray-600 text-xs mt-1">Number of games a guest must play to become eligible for paid membership.</p>
+          className="w-full max-w-xs px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30" />
+        <p className="text-pkr-gold-300/30 text-xs mt-1">Number of games a guest must play to become eligible for paid membership.</p>
       </div>
 
       <div>
-        <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
+        <label className="flex items-center gap-2 text-sm text-pkr-gold-300/50 cursor-pointer">
           <input type="checkbox" checked={publicStandings} onChange={e => setPublicStandings(e.target.checked)}
-            className="rounded border-gray-600 bg-gray-900 text-green-500" />
+            className="rounded border-pkr-green-600 bg-pkr-green-900 text-pkr-gold-500" />
           Enable Public Standings
         </label>
-        <p className="text-gray-600 text-xs mt-1">Allow anyone with the link to view league standings (no login required).</p>
+        <p className="text-pkr-gold-300/30 text-xs mt-1">Allow anyone with the link to view league standings (no login required).</p>
         {publicStandings && (
           <div className="mt-2 flex items-center gap-2">
             <input type="text" readOnly value={publicUrl}
-              className="flex-1 max-w-md px-3 py-1.5 text-sm bg-gray-900 text-gray-300 rounded border border-gray-700" />
+              className="flex-1 max-w-md px-3 py-1.5 text-sm bg-gray-900 text-pkr-gold-300/70 rounded border border-pkr-green-700/50" />
             <button type="button" onClick={() => navigator.clipboard.writeText(publicUrl)}
-              className="px-3 py-1.5 text-xs bg-gray-700 text-white rounded hover:bg-gray-600">
+              className="px-3 py-1.5 text-xs bg-pkr-gold-500 text-pkr-green-900 rounded hover:bg-pkr-green-600">
               Copy
             </button>
           </div>
@@ -1055,10 +1055,10 @@ function LeagueSettings({ leagueId, isAdmin, league }) {
       </div>
 
       <div className="flex items-center gap-3">
-        <button type="submit" disabled={saving} className="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50">
+        <button type="submit" disabled={saving} className="px-4 py-2 text-sm bg-pkr-gold-500 text-pkr-green-900 rounded-lg hover:bg-pkr-gold-400 font-medium disabled:opacity-50">
           {saving ? 'Saving...' : 'Save Settings'}
         </button>
-        {saved && <span className="text-green-400 text-sm">Saved!</span>}
+        {saved && <span className="text-pkr-gold-400 text-sm">Saved!</span>}
       </div>
     </form>
   )
@@ -1115,44 +1115,44 @@ function PointsEditor({ leagueId, structureId, onDone, onCancel }) {
   if (loading) return <PageSpinner />
 
   return (
-    <form onSubmit={handleSubmit} className="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-4">
+    <form onSubmit={handleSubmit} className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-4 space-y-4">
       <h3 className="text-white font-semibold">{structureId ? 'Edit' : 'New'} Points Structure</h3>
       {error && <p className="text-red-400 text-sm">{error}</p>}
 
       <input type="text" placeholder="Structure Name" value={name} onChange={e => setName(e.target.value)}
-        className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none" required />
+        className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30" required />
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm text-gray-400 mb-1">Participation Points</label>
+          <label className="block text-sm text-pkr-gold-300/50 mb-1">Participation Points</label>
           <input type="number" min="0" value={participationPoints} onChange={e => setParticipationPoints(parseInt(e.target.value) || 0)}
-            className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none" />
+            className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30" />
         </div>
         <div>
-          <label className="block text-sm text-gray-400 mb-1">Bounty Points</label>
+          <label className="block text-sm text-pkr-gold-300/50 mb-1">Bounty Points</label>
           <input type="number" min="0" value={bountyPoints} onChange={e => setBountyPoints(parseInt(e.target.value) || 0)}
-            className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none" />
+            className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30" />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm text-gray-400 mb-2">Position Points</label>
+        <label className="block text-sm text-pkr-gold-300/50 mb-2">Position Points</label>
         <div className="grid grid-cols-5 gap-2">
           {positionPoints.map((pp, idx) => (
             <div key={idx}>
-              <label className="text-xs text-gray-500">#{pp.position}</label>
+              <label className="text-xs text-pkr-gold-300/40">#{pp.position}</label>
               <input type="number" min="0" value={pp.points} onChange={e => updatePosition(idx, e.target.value)}
-                className="w-full px-2 py-1 bg-gray-900 text-white rounded border border-gray-700 text-sm focus:border-green-500 focus:outline-none" />
+                className="w-full px-2 py-1 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 text-sm focus:border-pkr-gold-500 focus:outline-none" />
             </div>
           ))}
         </div>
       </div>
 
       <div className="flex gap-2">
-        <button type="submit" disabled={saving} className="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50">
+        <button type="submit" disabled={saving} className="px-4 py-2 text-sm bg-pkr-gold-500 text-pkr-green-900 rounded-lg hover:bg-pkr-gold-400 font-medium disabled:opacity-50">
           {saving ? 'Saving...' : 'Save'}
         </button>
-        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancel</button>
+        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-pkr-gold-300/50 hover:text-white">Cancel</button>
       </div>
     </form>
   )

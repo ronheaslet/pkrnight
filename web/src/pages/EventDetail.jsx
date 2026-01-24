@@ -191,21 +191,21 @@ export function EventDetail() {
             <button
               onClick={() => handleRsvp('going')}
               disabled={rsvpLoading}
-              className={`px-4 py-2 text-sm rounded transition-colors ${myRsvp?.status === 'going' ? 'bg-green-600 text-white' : 'bg-pkr-green-700 text-pkr-gold-300 hover:bg-gray-600'}`}
+              className={`px-4 py-2 text-sm rounded transition-colors ${myRsvp?.status === 'going' ? 'bg-green-600 text-white' : 'bg-pkr-green-700 text-pkr-gold-300 hover:bg-pkr-green-600'}`}
             >
               Going ({goingList.length})
             </button>
             <button
               onClick={() => handleRsvp('maybe')}
               disabled={rsvpLoading}
-              className={`px-4 py-2 text-sm rounded transition-colors ${myRsvp?.status === 'maybe' ? 'bg-yellow-600 text-white' : 'bg-pkr-green-700 text-pkr-gold-300 hover:bg-gray-600'}`}
+              className={`px-4 py-2 text-sm rounded transition-colors ${myRsvp?.status === 'maybe' ? 'bg-yellow-600 text-white' : 'bg-pkr-green-700 text-pkr-gold-300 hover:bg-pkr-green-600'}`}
             >
               Maybe ({maybeList.length})
             </button>
             <button
               onClick={() => handleRsvp('not_going')}
               disabled={rsvpLoading}
-              className={`px-4 py-2 text-sm rounded transition-colors ${myRsvp?.status === 'not_going' ? 'bg-red-600 text-white' : 'bg-pkr-green-700 text-pkr-gold-300 hover:bg-gray-600'}`}
+              className={`px-4 py-2 text-sm rounded transition-colors ${myRsvp?.status === 'not_going' ? 'bg-red-600 text-white' : 'bg-pkr-green-700 text-pkr-gold-300 hover:bg-pkr-green-600'}`}
             >
               Can't Go ({notGoingList.length})
             </button>
@@ -219,7 +219,7 @@ export function EventDetail() {
                   <span className="text-pkr-gold-400 text-xs uppercase font-medium">Going</span>
                   <div className="flex flex-wrap gap-2 mt-1">
                     {goingList.map(r => (
-                      <span key={r.id} className="text-sm text-white bg-gray-700 px-2 py-0.5 rounded">{r.display_name}</span>
+                      <span key={r.id} className="text-sm text-white bg-pkr-green-700 px-2 py-0.5 rounded">{r.display_name}</span>
                     ))}
                   </div>
                 </div>
@@ -229,7 +229,7 @@ export function EventDetail() {
                   <span className="text-yellow-400 text-xs uppercase font-medium">Maybe</span>
                   <div className="flex flex-wrap gap-2 mt-1">
                     {maybeList.map(r => (
-                      <span key={r.id} className="text-sm text-gray-300 bg-gray-700 px-2 py-0.5 rounded">{r.display_name}</span>
+                      <span key={r.id} className="text-sm text-pkr-gold-300/70 bg-pkr-green-700 px-2 py-0.5 rounded">{r.display_name}</span>
                     ))}
                   </div>
                 </div>
@@ -239,7 +239,7 @@ export function EventDetail() {
                   <span className="text-red-400 text-xs uppercase font-medium">Can't Go</span>
                   <div className="flex flex-wrap gap-2 mt-1">
                     {notGoingList.map(r => (
-                      <span key={r.id} className="text-sm text-pkr-gold-300/40 bg-gray-700 px-2 py-0.5 rounded">{r.display_name}</span>
+                      <span key={r.id} className="text-sm text-pkr-gold-300/40 bg-pkr-green-700 px-2 py-0.5 rounded">{r.display_name}</span>
                     ))}
                   </div>
                 </div>
@@ -310,7 +310,7 @@ export function EventDetail() {
         {session && isCompleted && (
           <button
             onClick={handleEnterGame}
-            className="px-5 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors"
+            className="px-5 py-2 bg-pkr-green-700 text-white rounded hover:bg-pkr-green-600 transition-colors"
           >
             View Results
           </button>
@@ -334,7 +334,7 @@ export function EventDetail() {
           <h2 className="text-lg font-semibold text-white mb-3">
             {isCompleted ? 'Results' : 'Registered Players'}
           </h2>
-          <div className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg divide-y divide-gray-700">
+          <div className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg divide-y divide-pkr-green-700/50">
             {participants
               .sort((a, b) => {
                 if (isCompleted) return (a.finish_position || 99) - (b.finish_position || 99)
@@ -421,7 +421,7 @@ function TimelineEvent({ event }) {
 
   const messages = {
     GAME_STARTED: () => <span className="text-pkr-gold-400">Game started</span>,
-    PLAYER_REGISTERED: () => <span className="text-gray-300"><span className="text-white">{data.playerName || 'Player'}</span> registered</span>,
+    PLAYER_REGISTERED: () => <span className="text-pkr-gold-300/70"><span className="text-white">{data.playerName || 'Player'}</span> registered</span>,
     PLAYER_ELIMINATED: () => <span className="text-red-400"><span className="text-white">{data.playerName || 'Player'}</span> eliminated{data.eliminatorName ? ` by ${data.eliminatorName}` : ''} (#{data.position})</span>,
     PLAYER_REBUY: () => <span className="text-yellow-400"><span className="text-white">{data.playerName || 'Player'}</span> rebought in</span>,
     GAME_ENDED: () => <span className="text-blue-400">Game completed</span>,

@@ -114,53 +114,53 @@ export function CreateEvent() {
   return (
     <div className="max-w-lg mx-auto space-y-6">
       <div>
-        <Link to={`/leagues/${leagueId}`} className="text-gray-400 hover:text-white text-sm">&larr; Back to Dashboard</Link>
-        <h1 className="text-2xl font-bold text-white mt-1">Create Event</h1>
+        <Link to={`/leagues/${leagueId}`} className="text-pkr-gold-300/60 hover:text-pkr-gold-300 text-sm">&larr; Back to Dashboard</Link>
+        <h1 className="text-2xl font-display font-bold text-pkr-gold-400 mt-1">Create Event</h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-gray-800 border border-gray-700 rounded-lg p-6 space-y-4">
+      <form onSubmit={handleSubmit} className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-6 space-y-4">
         {error && <p className="text-red-400 text-sm">{error}</p>}
 
         <div>
-          <label className="block text-sm text-gray-400 mb-1">Title *</label>
+          <label className="block text-sm text-pkr-gold-300/50 mb-1">Title *</label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none"
+            className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
             required
           />
         </div>
 
         <div>
-          <label className="block text-sm text-gray-400 mb-1">Description</label>
+          <label className="block text-sm text-pkr-gold-300/50 mb-1">Description</label>
           <input
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none"
+            className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
           />
         </div>
 
         <div>
-          <label className="block text-sm text-gray-400 mb-1">Date & Time *</label>
+          <label className="block text-sm text-pkr-gold-300/50 mb-1">Date & Time *</label>
           <input
             type="datetime-local"
             value={scheduledAt}
             onChange={(e) => setScheduledAt(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none"
+            className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
             required
           />
         </div>
 
         <div>
-          <label className="block text-sm text-gray-400 mb-1">Location</label>
+          <label className="block text-sm text-pkr-gold-300/50 mb-1">Location</label>
           {savedLocations.length > 0 ? (
             <div className="space-y-2">
               <select
                 value={locationId || (saveNewLocation ? '__new__' : '')}
                 onChange={handleLocationSelect}
-                className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
               >
                 <option value="">No location</option>
                 {savedLocations.map(loc => (
@@ -174,11 +174,11 @@ export function CreateEvent() {
                     type="text"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
-                    className="flex-1 px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none"
+                    className="flex-1 px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
                     placeholder="New location name"
                   />
-                  <label className="flex items-center gap-1 text-xs text-gray-400 whitespace-nowrap">
-                    <input type="checkbox" checked={saveNewLocation} onChange={e => setSaveNewLocation(e.target.checked)} className="rounded border-gray-600 bg-gray-900 text-green-500" />
+                  <label className="flex items-center gap-1 text-xs text-pkr-gold-300/50 whitespace-nowrap">
+                    <input type="checkbox" checked={saveNewLocation} onChange={e => setSaveNewLocation(e.target.checked)} className="rounded border-pkr-green-600 bg-pkr-green-900 text-pkr-gold-500" />
                     Save
                   </label>
                 </div>
@@ -189,7 +189,7 @@ export function CreateEvent() {
               type="text"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
               placeholder="e.g. Joe's house"
             />
           )}
@@ -197,62 +197,62 @@ export function CreateEvent() {
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Buy-in ($)</label>
+            <label className="block text-sm text-pkr-gold-300/50 mb-1">Buy-in ($)</label>
             <input
               type="number"
               min="0"
               step="1"
               value={buyInAmount}
               onChange={(e) => setBuyInAmount(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
               placeholder="0"
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Max Rebuys</label>
+            <label className="block text-sm text-pkr-gold-300/50 mb-1">Max Rebuys</label>
             <input
               type="number"
               min="0"
               value={maxRebuys}
               onChange={(e) => setMaxRebuys(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Rebuy ($)</label>
+            <label className="block text-sm text-pkr-gold-300/50 mb-1">Rebuy ($)</label>
             <input
               type="number"
               min="0"
               step="1"
               value={rebuyAmount}
               onChange={(e) => setRebuyAmount(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
               placeholder="0"
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Cutoff Level</label>
+            <label className="block text-sm text-pkr-gold-300/50 mb-1">Cutoff Level</label>
             <input
               type="number"
               min="0"
               value={rebuyCutoffLevel}
               onChange={(e) => setRebuyCutoffLevel(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
               placeholder="0 = no limit"
             />
           </div>
         </div>
 
         {/* Structure Dropdowns */}
-        <div className="space-y-3 pt-2 border-t border-gray-700">
-          <p className="text-sm text-gray-400 font-medium">Tournament Structures</p>
+        <div className="space-y-3 pt-2 border-t border-pkr-green-700/50">
+          <p className="text-sm text-pkr-gold-300/50 font-medium">Tournament Structures</p>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Blind Structure</label>
+            <label className="block text-sm text-pkr-gold-300/50 mb-1">Blind Structure</label>
             <select
               value={blindStructureId}
               onChange={(e) => setBlindStructureId(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
             >
               <option value="">None</option>
               {blindStructures.map(s => (
@@ -262,11 +262,11 @@ export function CreateEvent() {
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Payout Structure</label>
+            <label className="block text-sm text-pkr-gold-300/50 mb-1">Payout Structure</label>
             <select
               value={payoutStructureId}
               onChange={(e) => setPayoutStructureId(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
             >
               <option value="">None</option>
               {payoutStructures.map(s => (
@@ -276,11 +276,11 @@ export function CreateEvent() {
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Points Structure</label>
+            <label className="block text-sm text-pkr-gold-300/50 mb-1">Points Structure</label>
             <select
               value={pointsStructureId}
               onChange={(e) => setPointsStructureId(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-green-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-pkr-green-900 text-white rounded-lg border border-pkr-green-700/50 focus:border-pkr-gold-500 focus:outline-none placeholder-pkr-gold-300/30"
             >
               <option value="">None</option>
               {pointsStructures.map(s => (
@@ -294,13 +294,13 @@ export function CreateEvent() {
           <button
             type="submit"
             disabled={loading}
-            className="px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 transition-colors"
+            className="px-5 py-2 bg-pkr-gold-500 text-pkr-green-900 rounded-lg hover:bg-pkr-gold-400 font-medium disabled:opacity-50 transition-colors"
           >
             {loading ? 'Creating...' : 'Create Event'}
           </button>
           <Link
             to={`/leagues/${leagueId}`}
-            className="px-5 py-2 text-gray-400 hover:text-white transition-colors"
+            className="px-5 py-2 text-pkr-gold-300/50 hover:text-white transition-colors"
           >
             Cancel
           </Link>

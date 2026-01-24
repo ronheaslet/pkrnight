@@ -62,7 +62,7 @@ export function AdminDashboard() {
     return (
       <div className="text-center py-20">
         <p className="text-red-400 mb-4">{error}</p>
-        <Link to={`/leagues/${leagueId}`} className="text-green-400 hover:underline">Back to Dashboard</Link>
+        <Link to={`/leagues/${leagueId}`} className="text-pkr-gold-400 hover:underline">Back to Dashboard</Link>
       </div>
     )
   }
@@ -72,8 +72,8 @@ export function AdminDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <Link to={`/leagues/${leagueId}`} className="text-gray-400 hover:text-white text-sm">&larr; {league?.name || 'Dashboard'}</Link>
-        <h1 className="text-2xl font-bold text-white mt-1">Admin Dashboard</h1>
+        <Link to={`/leagues/${leagueId}`} className="text-pkr-gold-300/60 hover:text-pkr-gold-300 text-sm">&larr; {league?.name || 'Dashboard'}</Link>
+        <h1 className="text-2xl font-display font-bold text-pkr-gold-400 mt-1">Admin Dashboard</h1>
       </div>
 
       {/* Stats Tiles */}
@@ -90,39 +90,39 @@ export function AdminDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Link
             to={`/leagues/${leagueId}/events/new`}
-            className="flex items-center gap-3 bg-gray-800 border border-gray-700 rounded-lg p-4 hover:border-green-600 transition-colors"
+            className="flex items-center gap-3 bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-4 hover:border-pkr-gold-500/30 transition-colors"
           >
             <span className="text-2xl">+</span>
             <div>
               <p className="text-white font-medium">Create Event</p>
-              <p className="text-gray-400 text-sm">Schedule a new tournament</p>
+              <p className="text-pkr-gold-300/50 text-sm">Schedule a new tournament</p>
             </div>
           </Link>
           <Link
             to={`/leagues/${leagueId}/members`}
-            className="flex items-center gap-3 bg-gray-800 border border-gray-700 rounded-lg p-4 hover:border-green-600 transition-colors"
+            className="flex items-center gap-3 bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-4 hover:border-pkr-gold-500/30 transition-colors"
           >
             <span className="text-2xl">@</span>
             <div>
               <p className="text-white font-medium">Manage Members</p>
-              <p className="text-gray-400 text-sm">{members.active} active members</p>
+              <p className="text-pkr-gold-300/50 text-sm">{members.active} active members</p>
             </div>
           </Link>
           <Link
             to={`/leagues/${leagueId}/settings`}
-            className="flex items-center gap-3 bg-gray-800 border border-gray-700 rounded-lg p-4 hover:border-green-600 transition-colors"
+            className="flex items-center gap-3 bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-4 hover:border-pkr-gold-500/30 transition-colors"
           >
             <span className="text-2xl">*</span>
             <div>
               <p className="text-white font-medium">League Settings</p>
-              <p className="text-gray-400 text-sm">Configure structures</p>
+              <p className="text-pkr-gold-300/50 text-sm">Configure structures</p>
             </div>
           </Link>
         </div>
       </div>
 
       {/* Trophies Section */}
-      <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+      <div className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold text-white">Trophies</h2>
           <button
@@ -133,7 +133,7 @@ export function AdminDashboard() {
             {trophyLoading ? 'Calculating...' : `Calculate ${new Date().getFullYear()} Trophies`}
           </button>
         </div>
-        <p className="text-gray-400 text-sm mb-3">
+        <p className="text-pkr-gold-300/50 text-sm mb-3">
           Awards trophies to top performers: Points Champion, Bounty King, Money Maker, Most Wins, Iron Player.
         </p>
         {trophyResult && !trophyResult.error && (
@@ -155,19 +155,19 @@ export function AdminDashboard() {
       <div>
         <h2 className="text-lg font-semibold text-white mb-3">Recent Activity</h2>
         {activity.length === 0 ? (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-center">
-            <p className="text-gray-400">No activity yet.</p>
+          <div className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-6 text-center">
+            <p className="text-pkr-gold-300/50">No activity yet.</p>
           </div>
         ) : (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg divide-y divide-gray-700">
+          <div className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg divide-y divide-pkr-green-700/50">
             {activity.map((item, idx) => (
               <div key={idx} className="px-4 py-3 flex items-start gap-3">
-                <span className="text-gray-500 text-lg mt-0.5">{getEventIcon(item.event_type)}</span>
+                <span className="text-pkr-gold-300/40 text-lg mt-0.5">{getEventIcon(item.event_type)}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-sm">
                     {formatActivity(item)}
                   </p>
-                  <p className="text-gray-500 text-xs mt-0.5">
+                  <p className="text-pkr-gold-300/40 text-xs mt-0.5">
                     {item.event_title} &middot; {formatTimeAgo(item.created_at)}
                   </p>
                 </div>
@@ -222,10 +222,10 @@ function formatTimeAgo(dateStr) {
 
 function StatTile({ label, value, sub }) {
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-      <p className="text-2xl font-bold text-white">{value}</p>
-      <p className="text-gray-400 text-sm">{label}</p>
-      {sub && <p className="text-gray-500 text-xs mt-1">{sub}</p>}
+    <div className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-4">
+      <p className="text-2xl font-display font-bold text-pkr-gold-400">{value}</p>
+      <p className="text-pkr-gold-300/50 text-sm">{label}</p>
+      {sub && <p className="text-pkr-gold-300/40 text-xs mt-1">{sub}</p>}
     </div>
   )
 }

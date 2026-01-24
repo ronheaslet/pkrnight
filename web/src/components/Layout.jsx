@@ -179,10 +179,10 @@ export function Layout() {
                   active={isActivePrefix(`/leagues/${leagueId}/standings`)}
                 />
                 <NavTab
-                  to={`/leagues/${leagueId}`}
-                  icon="🎱"
-                  label="Live"
-                  active={false}
+                  to={`/leagues/${leagueId}/settings`}
+                  icon="⚙️"
+                  label="Settings"
+                  active={isActivePrefix(`/leagues/${leagueId}/settings`)}
                 />
                 <NavTab
                   to={`/leagues/${leagueId}/members`}

@@ -43,7 +43,7 @@ export function Game() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-pkr-green-950 flex items-center justify-center">
         <Spinner size="lg" />
       </div>
     )
@@ -51,23 +51,23 @@ export function Game() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center gap-4">
+      <div className="min-h-screen bg-pkr-green-950 flex flex-col items-center justify-center gap-4">
         <p className="text-red-400">{error}</p>
-        <button onClick={() => navigate(-1)} className="text-green-400 hover:underline">Go back</button>
+        <button onClick={() => navigate(-1)} className="text-pkr-gold-400 hover:underline">Go back</button>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 p-4">
+    <div className="min-h-screen bg-pkr-green-950 p-4">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-white">&larr; Back</button>
+        <button onClick={() => navigate(-1)} className="text-pkr-gold-300/60 hover:text-white">&larr; Back</button>
         <div className="flex items-center gap-3">
           {/* Sound controls */}
           <button
             onClick={() => updateSettings({ enabled: !settings.enabled })}
-            className={`text-sm px-2 py-1 rounded ${settings.enabled ? 'bg-green-900 text-green-300' : 'bg-gray-700 text-gray-400'}`}
+            className={`text-sm px-2 py-1 rounded ${settings.enabled ? 'bg-green-900 text-green-300' : 'bg-pkr-green-700 text-pkr-gold-300/50'}`}
             title={settings.enabled ? 'Mute sounds' : 'Enable sounds'}
           >
             {settings.enabled ? 'Sound ON' : 'Sound OFF'}
@@ -75,7 +75,7 @@ export function Game() {
           {settings.enabled && (
             <button
               onClick={() => updateSettings({ voice: !settings.voice })}
-              className={`text-sm px-2 py-1 rounded ${settings.voice ? 'bg-blue-900 text-blue-300' : 'bg-gray-700 text-gray-400'}`}
+              className={`text-sm px-2 py-1 rounded ${settings.voice ? 'bg-blue-900 text-blue-300' : 'bg-pkr-green-700 text-pkr-gold-300/50'}`}
               title={settings.voice ? 'Disable voice' : 'Enable voice'}
             >
               {settings.voice ? 'Voice ON' : 'Voice OFF'}
@@ -84,34 +84,34 @@ export function Game() {
           <Link
             to={`/games/${sessionId}/display`}
             target="_blank"
-            className="text-sm px-2 py-1 bg-gray-700 text-gray-300 rounded hover:bg-gray-600"
+            className="text-sm px-2 py-1 bg-pkr-green-700 text-pkr-gold-300 rounded hover:bg-pkr-green-600"
             title="Open dealer/TV display"
           >
             TV
           </Link>
           <span className={`w-2 h-2 rounded-full ${connectionState === 'connected' ? 'bg-green-400' : 'bg-red-400'}`} />
-          <span className="text-gray-400 text-sm">{connectionState}</span>
+          <span className="text-pkr-gold-300/50 text-sm">{connectionState}</span>
         </div>
       </div>
 
       {/* Event Title */}
-      <h1 className="text-2xl font-bold text-white text-center mb-2">{game?.event_title || 'Game'}</h1>
+      <h1 className="text-2xl font-display font-bold text-white text-center mb-2">{game?.event_title || 'Game'}</h1>
 
       {/* Prize Pool */}
       {game?.prize_pool > 0 && (
-        <p className="text-center text-green-400 text-lg mb-6">
+        <p className="text-center text-pkr-gold-400 text-lg mb-6">
           Prize Pool: ${parseFloat(game.prize_pool).toFixed(2)}
         </p>
       )}
 
       {/* Timer */}
-      <div className="bg-gray-800 rounded-lg p-6 mb-6 border border-gray-700">
+      <div className="bg-pkr-green-900 rounded-lg p-6 mb-6 border border-pkr-green-700/50">
         <Timer timer={timer} />
       </div>
 
       {/* Rebuy cutoff indicator */}
       {game?.rebuy_cutoff_level > 0 && timer && (
-        <div className={`text-center text-sm mb-4 ${timer.currentLevel > game.rebuy_cutoff_level ? 'text-red-400' : 'text-gray-400'}`}>
+        <div className={`text-center text-sm mb-4 ${timer.currentLevel > game.rebuy_cutoff_level ? 'text-red-400' : 'text-pkr-gold-300/50'}`}>
           {timer.currentLevel > game.rebuy_cutoff_level
             ? 'Rebuys CLOSED'
             : `Rebuys close after Level ${game.rebuy_cutoff_level}`}
@@ -120,14 +120,14 @@ export function Game() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Players */}
-        <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+        <div className="bg-pkr-green-900 rounded-lg p-4 border border-pkr-green-700/50">
           <h2 className="text-lg font-semibold text-white mb-3">Players</h2>
           <PlayerList participants={participants} />
         </div>
 
         {/* Controls (users with permissions) */}
         {hasControls && (
-          <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+          <div className="bg-pkr-green-900 rounded-lg p-4 border border-pkr-green-700/50">
             <h2 className="text-lg font-semibold text-white mb-3">Controls</h2>
             <GameControls game={game} participants={participants} timer={timer} actions={actions} permissions={permissions} />
           </div>

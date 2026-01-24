@@ -40,13 +40,13 @@ export function Notifications() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <Link to="/" className="text-gray-400 hover:text-white text-sm">&larr; Home</Link>
-          <h1 className="text-2xl font-bold text-white mt-1">Notifications</h1>
+          <Link to="/" className="text-pkr-gold-300/60 hover:text-pkr-gold-300 text-sm">&larr; Home</Link>
+          <h1 className="text-2xl font-display font-bold text-pkr-gold-400 mt-1">Notifications</h1>
         </div>
         {notifications.some(n => !n.read) && (
           <button
             onClick={markAllRead}
-            className="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+            className="px-3 py-1.5 text-sm bg-pkr-gold-500 text-pkr-green-900 rounded-lg hover:bg-pkr-gold-400 font-medium"
           >
             Mark All Read
           </button>
@@ -54,28 +54,28 @@ export function Notifications() {
       </div>
 
       {notifications.length === 0 ? (
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-8 text-center">
-          <p className="text-gray-400">No notifications yet.</p>
-          <p className="text-gray-500 text-sm mt-1">You'll be notified about game results, trophies, and more.</p>
+        <div className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-8 text-center">
+          <p className="text-pkr-gold-300/60">No notifications yet.</p>
+          <p className="text-pkr-gold-300/40 text-sm mt-1">You'll be notified about game results, trophies, and more.</p>
         </div>
       ) : (
-        <div className="bg-gray-800 border border-gray-700 rounded-lg divide-y divide-gray-700">
+        <div className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg divide-y divide-pkr-green-700/50">
           {notifications.map(n => (
             <div
               key={n.id}
               onClick={() => !n.read && markAsRead(n.id)}
-              className={`px-4 py-4 cursor-pointer hover:bg-gray-700/50 transition-colors ${!n.read ? 'bg-gray-700/20' : ''}`}
+              className={`px-4 py-4 cursor-pointer hover:bg-pkr-green-700/50 transition-colors ${!n.read ? 'bg-pkr-green-700/20' : ''}`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    {!n.read && <span className="w-2 h-2 bg-green-400 rounded-full flex-shrink-0" />}
-                    <p className={`text-sm ${!n.read ? 'text-white font-medium' : 'text-gray-300'}`}>{n.title}</p>
+                    {!n.read && <span className="w-2 h-2 bg-pkr-gold-400 rounded-full flex-shrink-0" />}
+                    <p className={`text-sm ${!n.read ? 'text-white font-medium' : 'text-pkr-gold-300/70'}`}>{n.title}</p>
                   </div>
-                  {n.body && <p className="text-sm text-gray-500 mt-0.5 ml-4">{n.body}</p>}
+                  {n.body && <p className="text-sm text-pkr-gold-300/40 mt-0.5 ml-4">{n.body}</p>}
                   <div className="flex gap-3 mt-1 ml-4">
-                    {n.league_name && <span className="text-xs text-gray-600">{n.league_name}</span>}
-                    <span className="text-xs text-gray-600">{formatTimeAgo(n.created_at)}</span>
+                    {n.league_name && <span className="text-xs text-pkr-gold-300/30">{n.league_name}</span>}
+                    <span className="text-xs text-pkr-gold-300/30">{formatTimeAgo(n.created_at)}</span>
                   </div>
                 </div>
               </div>
