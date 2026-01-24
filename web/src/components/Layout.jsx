@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { api } from '../api/client'
+import { ViewModeSwitcher } from './ViewModeSwitcher'
 
 export function Layout() {
   const { user, logout } = useAuth()
@@ -11,6 +12,8 @@ export function Layout() {
   const [showDropdown, setShowDropdown] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [league, setLeague] = useState(null)
+  const [activeGame, setActiveGame] = useState(null)
   const dropdownRef = useRef(null)
   const userMenuRef = useRef(null)
 
@@ -25,6 +28,15 @@ export function Layout() {
       return () => clearInterval(interval)
     }
   }, [user])
+
+  useEffect(() => {
+    if (leagueId) {
+      fetchLeagueInfo()
+    } else {
+      setLeague(null)
+      setActiveGame(null)
+    }
+  }, [leagueId])
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -43,6 +55,17 @@ export function Layout() {
     try {
       const data = await api.get('/api/notifications/count')
       setUnreadCount(data.count)
+    } catch {}
+  }
+
+  async function fetchLeagueInfo() {
+    try {
+      const [leagueData, gamesData] = await Promise.all([
+        api.get(`/api/leagues/${leagueId}`),
+        api.get(`/api/games/league/${leagueId}/active`).catch(() => null)
+      ])
+      setLeague(leagueData.league)
+      setActiveGame(gamesData?.session || null)
     } catch {}
   }
 
@@ -80,6 +103,9 @@ export function Layout() {
   const isActive = (path) => location.pathname === path
   const isActivePrefix = (prefix) => location.pathname.startsWith(prefix)
 
+  const isAdmin = league?.role === 'owner' || league?.role === 'admin'
+  const isDealer = league?.role === 'dealer' || isAdmin
+
   const initials = user?.displayName
     ?.split(' ')
     .map(n => n[0])
@@ -94,11 +120,18 @@ export function Layout() {
         <div className="flex items-center justify-between px-4 py-3 max-w-5xl mx-auto">
           <Link to="/" className="flex items-center gap-2">
             <span className="text-2xl">🃏</span>
-            <span className="font-display text-lg text-gold">PKR Night</span>
+            <span className="font-display text-lg text-gold">
+              {leagueId && league ? league.name : 'PKR Night'}
+            </span>
           </Link>
 
           {user && (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              {/* View Mode Switcher (only in league context) */}
+              {leagueId && (
+                <ViewModeSwitcher isAdmin={isAdmin} isDealer={isDealer} />
+              )}
+
               {/* Notification Bell */}
               <div className="relative" ref={dropdownRef}>
                 <button
@@ -204,9 +237,19 @@ export function Layout() {
             <>
               <TabBtn to={`/leagues/${leagueId}`} icon="📅" label="Calendar" active={isActive(`/leagues/${leagueId}`)} />
               <TabBtn to={`/leagues/${leagueId}/standings`} icon="🏆" label="Standings" active={isActivePrefix(`/leagues/${leagueId}/standings`)} />
-              <TabBtn to={`/leagues/${leagueId}/members`} icon="🏅" label="Members" active={isActivePrefix(`/leagues/${leagueId}/members`)} />
+              <TabBtn
+                to={activeGame ? `/games/${activeGame.id}` : '#'}
+                icon="⏱️"
+                label="Live"
+                active={false}
+                disabled={!activeGame}
+                pulse={activeGame?.status === 'running'}
+              />
+              <TabBtn to={`/leagues/${leagueId}/standings?tab=trophies`} icon="🏅" label="Trophies" active={location.search.includes('tab=trophies')} />
               <TabBtn to={`/leagues/${leagueId}/chat`} icon="💬" label="Chat" active={isActivePrefix(`/leagues/${leagueId}/chat`)} badge={unreadCount} />
-              <TabBtn to={`/leagues/${leagueId}/settings`} icon="⚙️" label="Settings" active={isActivePrefix(`/leagues/${leagueId}/settings`)} />
+              {isAdmin && (
+                <TabBtn to={`/leagues/${leagueId}/admin`} icon="⚙️" label="Admin" active={isActivePrefix(`/leagues/${leagueId}/admin`)} />
+              )}
             </>
           ) : (
             <>
@@ -221,7 +264,15 @@ export function Layout() {
   )
 }
 
-function TabBtn({ to, icon, label, active, badge }) {
+function TabBtn({ to, icon, label, active, badge, disabled, pulse }) {
+  if (disabled) {
+    return (
+      <div className="tab-btn opacity-40 cursor-not-allowed">
+        <span className="icon relative">{icon}</span>
+        <span className="tab-label">{label}</span>
+      </div>
+    )
+  }
   return (
     <Link
       to={to}
@@ -231,6 +282,9 @@ function TabBtn({ to, icon, label, active, badge }) {
         {icon}
         {badge > 0 && (
           <span className="absolute -top-0.5 -right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+        )}
+        {pulse && (
+          <span className="absolute -top-0.5 -right-1.5 w-2 h-2 bg-green-500 rounded-full animate-pulse" />
         )}
       </span>
       <span className="tab-label">{label}</span>

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { Layout } from './components/Layout'
+import { Landing } from './pages/Landing'
 import { Login } from './pages/Login'
 import { Register } from './pages/Register'
 import { Leagues } from './pages/Leagues'
@@ -32,7 +33,7 @@ function ProtectedRoute({ children }) {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/welcome" replace />
   }
 
   return children
@@ -62,6 +63,7 @@ function App() {
       <AuthProvider>
         <Routes>
           {/* Public routes */}
+          <Route path="/welcome" element={<PublicRoute><Landing /></PublicRoute>} />
           <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
           <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
           <Route path="/standings/:leagueId" element={<PublicStandings />} />

@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { api } from '../api/client'
+import { useAuth } from '../contexts/AuthContext'
 import { PageSpinner } from '../components/Spinner'
 import { Avatar } from '../components/Avatar'
 
 export function LeagueDashboard() {
   const { leagueId } = useParams()
+  const { user } = useAuth()
   const [league, setLeague] = useState(null)
   const [events, setEvents] = useState([])
   const [members, setMembers] = useState([])
+  const [rsvps, setRsvps] = useState({})
   const [pot, setPot] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -29,11 +32,32 @@ export function LeagueDashboard() {
       setEvents(eventsData.events)
       setMembers(membersData.members)
       if (potData) setPot(potData)
+
+      // Fetch RSVPs for upcoming events
+      const upcoming = eventsData.events.filter(e => e.status === 'scheduled' || e.status === 'active')
+      const rsvpMap = {}
+      await Promise.all(
+        upcoming.slice(0, 5).map(async (event) => {
+          try {
+            const data = await api.get(`/api/rsvps/event/${event.id}`)
+            rsvpMap[event.id] = data.rsvps
+          } catch {}
+        })
+      )
+      setRsvps(rsvpMap)
     } catch (err) {
       setError(err.message)
     } finally {
       setLoading(false)
     }
+  }
+
+  async function handleRsvp(eventId, status) {
+    try {
+      await api.post(`/api/rsvps/event/${eventId}`, { status })
+      const data = await api.get(`/api/rsvps/event/${eventId}`)
+      setRsvps(prev => ({ ...prev, [eventId]: data.rsvps }))
+    } catch {}
   }
 
   if (loading) return <PageSpinner />
@@ -50,13 +74,18 @@ export function LeagueDashboard() {
   const isAdmin = league?.role === 'owner' || league?.role === 'admin'
   const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
+  // Split events into upcoming and past
+  const now = new Date()
+  const upcoming = events.filter(e => e.status === 'scheduled' || e.status === 'active' || new Date(e.scheduled_at) >= now)
+  const past = events.filter(e => e.status === 'completed' || (e.status !== 'active' && new Date(e.scheduled_at) < now))
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <Link to="/" className="text-white/40 hover:text-white text-sm">&larr; All Leagues</Link>
-          <h1 className="font-display text-xl text-gold mt-1">{league.name}</h1>
+          <h1 className="font-display text-xl text-gold mt-1">{currentMonth}</h1>
         </div>
         {isAdmin && (
           <Link
@@ -68,42 +97,95 @@ export function LeagueDashboard() {
         )}
       </div>
 
-      {/* Invite Code */}
+      {/* Invite Code (compact) */}
       {isAdmin && league.invite_code && (
-        <div className="card card-gold">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-gold uppercase tracking-wider">Invite Code</p>
-              <p className="text-gold font-mono text-lg">{league.invite_code}</p>
-            </div>
-            <button
-              onClick={() => navigator.clipboard.writeText(league.invite_code)}
-              className="btn btn-secondary text-sm"
-            >
-              Copy
-            </button>
-          </div>
+        <div className="flex items-center gap-3 bg-gold/10 border border-gold/30 rounded-xl px-4 py-2">
+          <span className="text-xs text-gold uppercase tracking-wider">Invite:</span>
+          <span className="text-gold font-mono text-sm">{league.invite_code}</span>
+          <button
+            onClick={() => navigator.clipboard.writeText(league.invite_code)}
+            className="ml-auto text-xs text-gold/70 hover:text-gold"
+          >
+            Copy
+          </button>
         </div>
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="card text-center">
-          <div className="font-display text-2xl text-white">{members.length}</div>
-          <div className="text-xs text-white/50">Members</div>
+      {/* Events */}
+      {events.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="text-4xl mb-4">📅</div>
+          <div className="text-white/60 mb-4">No games scheduled yet</div>
+          {isAdmin && (
+            <Link to={`/leagues/${leagueId}/events/new`} className="btn btn-primary">
+              Schedule First Game
+            </Link>
+          )}
         </div>
-        <div className="card text-center">
-          <div className="font-display text-2xl text-white">{events.length}</div>
-          <div className="text-xs text-white/50">Events</div>
+      ) : (
+        <div className="space-y-4">
+          {/* Upcoming Events with RSVP */}
+          {upcoming.map((event) => (
+            <EventCard
+              key={event.id}
+              event={event}
+              leagueId={leagueId}
+              rsvps={rsvps[event.id] || []}
+              userId={user?.id}
+              isAdmin={isAdmin}
+              onRsvp={handleRsvp}
+            />
+          ))}
+
+          {/* Past Events (collapsed) */}
+          {past.length > 0 && (
+            <div>
+              <h3 className="text-sm text-white/40 uppercase tracking-wider mb-3 mt-6">Past Games</h3>
+              <div className="space-y-2">
+                {past.slice(0, 5).map((event) => {
+                  const d = new Date(event.scheduled_at)
+                  return (
+                    <Link
+                      key={event.id}
+                      to={`/leagues/${leagueId}/events/${event.id}`}
+                      className="card flex items-center gap-3 hover:bg-white/5 transition-colors py-3"
+                    >
+                      <div className="w-10 h-10 bg-white/5 rounded-lg flex flex-col items-center justify-center shrink-0">
+                        <div className="font-display text-sm text-white/50">{d.getDate()}</div>
+                        <div className="text-[9px] text-white/30 uppercase">{d.toLocaleString('default', { month: 'short' })}</div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-white/60 text-sm truncate block">{event.title}</span>
+                      </div>
+                      <EventBadge status={event.status} />
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
-        <div className="card text-center">
-          <div className="font-display text-2xl text-white">{events.filter(e => e.status === 'scheduled').length}</div>
-          <div className="text-xs text-white/50">Upcoming</div>
+      )}
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="card text-center py-3">
+          <div className="font-display text-xl text-white">{members.length}</div>
+          <div className="text-[10px] text-white/50">Members</div>
         </div>
-        {pot && (
-          <div className="card text-center">
-            <div className="font-display text-2xl text-gold">${pot.balance.toFixed(0)}</div>
-            <div className="text-xs text-white/50">Pot</div>
+        <div className="card text-center py-3">
+          <div className="font-display text-xl text-white">{events.filter(e => e.status === 'completed').length}</div>
+          <div className="text-[10px] text-white/50">Games Played</div>
+        </div>
+        {pot ? (
+          <div className="card text-center py-3">
+            <div className="font-display text-xl text-gold">${pot.balance.toFixed(0)}</div>
+            <div className="text-[10px] text-white/50">Pot</div>
+          </div>
+        ) : (
+          <div className="card text-center py-3">
+            <div className="font-display text-xl text-white">{events.filter(e => e.status === 'scheduled').length}</div>
+            <div className="text-[10px] text-white/50">Upcoming</div>
           </div>
         )}
       </div>
@@ -130,77 +212,15 @@ export function LeagueDashboard() {
         </div>
       )}
 
-      {/* Events */}
-      <div>
-        <h2 className="font-display text-lg text-white mb-3">{currentMonth}</h2>
-        {events.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="text-4xl mb-4">📅</div>
-            <div className="text-white/60 mb-4">No games scheduled yet</div>
-            {isAdmin && (
-              <Link to={`/leagues/${leagueId}/events/new`} className="btn btn-primary">
-                Schedule First Game
-              </Link>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {events.map((event, idx) => {
-              const d = new Date(event.scheduled_at)
-              return (
-                <Link
-                  key={event.id}
-                  to={`/leagues/${leagueId}/events/${event.id}`}
-                  className={`card flex gap-4 hover:bg-white/5 transition-colors block ${idx === 0 ? 'border-gold/50 border' : ''}`}
-                >
-                  {/* Date Badge */}
-                  <div className="w-14 h-14 bg-gold/20 rounded-xl flex flex-col items-center justify-center shrink-0">
-                    <div className="font-display text-xl text-gold">{d.getDate()}</div>
-                    <div className="text-xs text-gold/70 uppercase">
-                      {d.toLocaleString('default', { month: 'short' })}
-                    </div>
-                  </div>
-
-                  {/* Event Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <h4 className="text-white font-semibold truncate">{event.title}</h4>
-                      <EventBadge status={event.status} />
-                    </div>
-                    <p className="text-sm text-white/60 mt-0.5">
-                      {d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                      {event.location && ` • ${event.location}`}
-                    </p>
-                    <p className="text-sm text-white/60">
-                      {event.buy_in_amount > 0 && `$${parseFloat(event.buy_in_amount).toFixed(0)} buy-in`}
-                      {event.max_players > 0 && ` • Max ${event.max_players}`}
-                    </p>
-
-                    {/* RSVP Count */}
-                    {event.rsvp_count > 0 && (
-                      <div className="mt-2 flex items-center gap-2">
-                        <div className="flex -space-x-1.5">
-                          {(event.rsvp_names || []).slice(0, 3).map((name, i) => (
-                            <Avatar key={i} name={name} size="xs" />
-                          ))}
-                        </div>
-                        <span className="text-xs text-white/40">
-                          {event.rsvp_count} going{event.max_players > 0 ? ` of ${event.max_players}` : ''}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </Link>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
       {/* Top Players */}
       {members.length > 0 && (
         <div>
-          <h2 className="font-display text-lg text-gold mb-3">Top Players</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-display text-lg text-gold">Top Players</h2>
+            <Link to={`/leagues/${leagueId}/standings`} className="text-xs text-white/40 hover:text-white">
+              View All
+            </Link>
+          </div>
           <div className="card p-0 divide-y divide-white/5">
             {members
               .sort((a, b) => (b.total_points || 0) - (a.total_points || 0))
@@ -229,6 +249,110 @@ export function LeagueDashboard() {
       {/* Pot */}
       {pot && (
         <PotSection pot={pot} leagueId={leagueId} isAdmin={isAdmin} onUpdate={fetchData} />
+      )}
+    </div>
+  )
+}
+
+function EventCard({ event, leagueId, rsvps, userId, isAdmin, onRsvp }) {
+  const d = new Date(event.scheduled_at)
+  const myRsvp = rsvps.find(r => r.user_id === userId)
+  const goingList = rsvps.filter(r => r.status === 'going')
+  const maybeList = rsvps.filter(r => r.status === 'maybe')
+  const spotsLeft = event.max_players > 0 ? event.max_players - goingList.length : null
+
+  return (
+    <div className={`card ${event.status === 'active' ? 'border-green-500/50 border' : ''}`}>
+      {/* Top: Date + Info + Spots */}
+      <Link
+        to={`/leagues/${leagueId}/events/${event.id}`}
+        className="flex gap-4 hover:opacity-90 transition-opacity"
+      >
+        {/* Date Badge */}
+        <div className="w-14 h-14 bg-gold/20 rounded-xl flex flex-col items-center justify-center shrink-0">
+          <div className="font-display text-xl text-gold">{d.getDate()}</div>
+          <div className="text-xs text-gold/70 uppercase">
+            {d.toLocaleString('default', { month: 'short' })}
+          </div>
+        </div>
+
+        {/* Event Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <h4 className="text-white font-semibold truncate">{event.title}</h4>
+            {event.status === 'active' && (
+              <span className="px-2 py-0.5 text-xs rounded-full bg-green-500/20 text-green-300 border border-green-500/30 shrink-0">
+                LIVE
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-white/60 mt-0.5">
+            {d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+            {event.location && ` \u2022 ${event.location}`}
+          </p>
+          <p className="text-sm text-white/50">
+            {event.buy_in_amount > 0 && `$${parseFloat(event.buy_in_amount).toFixed(0)} buy-in`}
+            {event.max_players > 0 && ` \u2022 Max ${event.max_players}`}
+          </p>
+        </div>
+
+        {/* Spots Left */}
+        {spotsLeft !== null && spotsLeft > 0 && (
+          <div className="text-right shrink-0">
+            <div className="font-display text-lg text-gold">{spotsLeft}</div>
+            <div className="text-[10px] text-gold/70">spots</div>
+          </div>
+        )}
+      </Link>
+
+      {/* RSVP Names */}
+      {rsvps.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-white/5 space-y-2">
+          {goingList.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-green-400">Going:</span>
+              {goingList.map(r => (
+                <span key={r.id} className="text-xs bg-green-600/20 text-green-300 px-2 py-0.5 rounded-full">
+                  {r.display_name}
+                </span>
+              ))}
+            </div>
+          )}
+          {maybeList.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-yellow-400">Maybe:</span>
+              {maybeList.map(r => (
+                <span key={r.id} className="text-xs bg-yellow-600/20 text-yellow-300 px-2 py-0.5 rounded-full">
+                  {r.display_name}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* RSVP Buttons */}
+      {(event.status === 'scheduled' || event.status === 'active') && (
+        <div className="mt-3 pt-3 border-t border-white/5 flex gap-2">
+          <button
+            onClick={() => onRsvp(event.id, 'going')}
+            className={`rsvp-btn rsvp-yes text-xs py-2 ${myRsvp?.status === 'going' ? 'active' : ''}`}
+          >
+            ✓ Going
+          </button>
+          <button
+            onClick={() => onRsvp(event.id, 'maybe')}
+            className={`rsvp-btn rsvp-maybe text-xs py-2 ${myRsvp?.status === 'maybe' ? 'active' : ''}`}
+          >
+            ? Maybe
+          </button>
+          <button
+            onClick={() => onRsvp(event.id, 'not_going')}
+            className={`rsvp-btn rsvp-no text-xs py-2 ${myRsvp?.status === 'not_going' ? 'active' : ''}`}
+          >
+            ✗ Can't
+          </button>
+        </div>
       )}
     </div>
   )
