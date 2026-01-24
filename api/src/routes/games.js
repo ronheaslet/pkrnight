@@ -72,7 +72,45 @@ games.get('/:sessionId', async (c) => {
     [sessionId]
   )
 
-  const timer = getTimerState(sessionId)
+  let timer = getTimerState(sessionId)
+
+  // Restore timer from DB if game is running but in-memory state was lost (server restart)
+  if (!timer && session.status === 'running' && session.current_level) {
+    let blindLevels = [
+      { level_number: 1, small_blind: 25, big_blind: 50, ante: 0, duration_minutes: 15 },
+      { level_number: 2, small_blind: 50, big_blind: 100, ante: 0, duration_minutes: 15 },
+      { level_number: 3, small_blind: 75, big_blind: 150, ante: 25, duration_minutes: 15 },
+      { level_number: 4, small_blind: 100, big_blind: 200, ante: 25, duration_minutes: 15 },
+      { level_number: 5, small_blind: 150, big_blind: 300, ante: 50, duration_minutes: 15 },
+      { level_number: 6, small_blind: 200, big_blind: 400, ante: 50, duration_minutes: 15 },
+      { level_number: 7, small_blind: 300, big_blind: 600, ante: 75, duration_minutes: 15 },
+      { level_number: 8, small_blind: 500, big_blind: 1000, ante: 100, duration_minutes: 15 }
+    ]
+
+    if (session.blind_structure_id) {
+      const { rows: levels } = await query(
+        `SELECT * FROM blind_levels WHERE structure_id = $1 ORDER BY level_number`,
+        [session.blind_structure_id]
+      )
+      if (levels.length > 0) blindLevels = levels
+    }
+
+    const restoredTimer = initializeTimer(sessionId, blindLevels)
+    restoredTimer.currentLevel = session.current_level
+    restoredTimer.timeRemaining = session.time_remaining_seconds || blindLevels[session.current_level - 1]?.duration_minutes * 60 || 900
+    const currentLevelData = blindLevels[session.current_level - 1]
+    if (currentLevelData) {
+      restoredTimer.currentBlinds = {
+        smallBlind: currentLevelData.small_blind,
+        bigBlind: currentLevelData.big_blind,
+        ante: currentLevelData.ante
+      }
+    }
+    if (session.is_running) {
+      setTimerRunning(sessionId, true)
+    }
+    timer = restoredTimer
+  }
 
   const userPermissions = await getUserPermissions(user.id, session.league_id)
   const isAdmin = membership[0].role === 'owner' || membership[0].role === 'admin'

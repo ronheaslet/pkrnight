@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { api } from '../api/client'
 import { PageSpinner } from '../components/Spinner'
+import { Avatar } from '../components/Avatar'
+import { RoleBadge } from '../components/RoleBadge'
 
 export function Members() {
   const { leagueId } = useParams()
@@ -9,6 +11,8 @@ export function Members() {
   const [league, setLeague] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState('all')
 
   useEffect(() => {
     fetchData()
@@ -43,6 +47,34 @@ export function Members() {
   const settings = league?.settings ? (typeof league.settings === 'string' ? JSON.parse(league.settings) : league.settings) : {}
   const guestThreshold = settings.guest_games_threshold || 0
 
+  function getMemberName(member) {
+    return member.display_name || member.full_name || member.email?.split('@')[0] || 'Unknown'
+  }
+
+  const filteredMembers = members.filter(m => {
+    const name = getMemberName(m)
+    const matchesSearch = !search || name.toLowerCase().includes(search.toLowerCase())
+    const matchesFilter = filter === 'all'
+      || (filter === 'paid' && m.member_type === 'paid')
+      || (filter === 'guests' && m.member_type === 'guest')
+      || (filter === 'admins' && (m.role === 'owner' || m.role === 'admin'))
+    return matchesSearch && matchesFilter
+  })
+
+  const counts = {
+    all: members.length,
+    paid: members.filter(m => m.member_type === 'paid').length,
+    guests: members.filter(m => m.member_type === 'guest').length,
+    admins: members.filter(m => m.role === 'owner' || m.role === 'admin').length,
+  }
+
+  const tabs = [
+    { key: 'all', label: 'All' },
+    { key: 'paid', label: 'Paid' },
+    { key: 'guests', label: 'Guests' },
+    { key: 'admins', label: 'Admins' },
+  ]
+
   return (
     <div className="space-y-6">
       <div>
@@ -50,69 +82,99 @@ export function Members() {
         <h1 className="text-2xl font-bold text-white mt-1">Members</h1>
       </div>
 
-      <div className="bg-gray-800 border border-gray-700 rounded-lg divide-y divide-gray-700">
-        {members.map((member) => {
-          const gamesPlayed = member.games_played || 0
-          const isGuest = member.member_type === 'guest'
-          const isEligible = isGuest && guestThreshold > 0 && gamesPlayed >= guestThreshold
+      {/* Search */}
+      <div>
+        <input
+          type="text"
+          placeholder="Search members..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-green-500"
+        />
+      </div>
 
-          return (
-            <div key={member.id} className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-white font-medium">{member.display_name}</span>
-                    <RoleBadge role={member.role} />
-                    {isGuest && (
-                      <span className="px-2 py-0.5 text-xs rounded-full bg-yellow-900 text-yellow-300">guest</span>
+      {/* Filter Tabs */}
+      <div className="flex gap-1 bg-gray-800 border border-gray-700 rounded-lg p-1">
+        {tabs.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setFilter(tab.key)}
+            className={`flex-1 px-3 py-1.5 text-sm rounded-md transition-colors ${
+              filter === tab.key
+                ? 'bg-green-600 text-white'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            {tab.label} ({counts[tab.key]})
+          </button>
+        ))}
+      </div>
+
+      {/* Member List */}
+      <div className="bg-gray-800 border border-gray-700 rounded-lg divide-y divide-gray-700">
+        {filteredMembers.length === 0 ? (
+          <div className="p-6 text-center text-gray-500">No members found</div>
+        ) : (
+          filteredMembers.map((member) => {
+            const gamesPlayed = member.games_played || 0
+            const isGuest = member.member_type === 'guest'
+            const isEligible = isGuest && guestThreshold > 0 && gamesPlayed >= guestThreshold
+            const name = getMemberName(member)
+
+            return (
+              <div key={member.id} className="p-4">
+                <div className="flex items-center gap-3">
+                  <Avatar name={name} url={member.avatar_url} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-white font-medium">{name}</span>
+                      {/* Base role badge */}
+                      <RoleBadge
+                        type={member.role}
+                        label={member.role}
+                        emoji={member.role === 'owner' ? '👑' : member.role === 'admin' ? '⭐' : null}
+                      />
+                      {/* Member type badge */}
+                      {member.member_type === 'paid' && (
+                        <RoleBadge type="paid" label="Paid" emoji="✓" />
+                      )}
+                      {isGuest && (
+                        <RoleBadge type="guest" label="Guest" />
+                      )}
+                      {isEligible && (
+                        <span className="px-2 py-0.5 text-xs rounded-full bg-green-900 text-green-300 border border-green-700">Eligible</span>
+                      )}
+                      {/* Custom role badges */}
+                      {member.custom_roles?.map(cr => (
+                        <RoleBadge key={cr.id} type="custom" label={cr.name} emoji={cr.emoji} />
+                      ))}
+                    </div>
+                    {member.full_name && member.full_name !== name && (
+                      <p className="text-gray-500 text-sm mt-0.5">{member.full_name}</p>
                     )}
-                    {isEligible && (
-                      <span className="px-2 py-0.5 text-xs rounded-full bg-green-900 text-green-300">Eligible</span>
+                    {isGuest && guestThreshold > 0 && (
+                      <p className="text-gray-600 text-xs mt-0.5">
+                        {gamesPlayed} of {guestThreshold} games{isEligible ? ' - eligible for membership' : ''}
+                      </p>
                     )}
-                    {member.custom_roles?.map(cr => (
-                      <span key={cr.id} className="px-2 py-0.5 text-xs rounded-full bg-green-900 text-green-300">
-                        {cr.emoji && <span className="mr-0.5">{cr.emoji}</span>}{cr.name}
-                      </span>
-                    ))}
                   </div>
-                  {member.full_name && (
-                    <p className="text-gray-500 text-sm mt-0.5">{member.full_name}</p>
-                  )}
-                  {isGuest && guestThreshold > 0 && (
-                    <p className="text-gray-600 text-xs mt-0.5">
-                      {gamesPlayed} of {guestThreshold} games{isEligible ? ' - eligible for membership' : ''}
-                    </p>
-                  )}
+                  <div className="text-right text-sm shrink-0">
+                    <p className="text-gray-400">{gamesPlayed} games</p>
+                    <p className="text-green-400">{member.total_points || 0} pts</p>
+                  </div>
                 </div>
-                <div className="text-right text-sm">
-                  <p className="text-gray-400">{gamesPlayed} games</p>
-                  <p className="text-green-400">{member.total_points || 0} pts</p>
-                </div>
+                {(member.total_wins > 0 || member.total_winnings > 0) && (
+                  <div className="flex gap-4 mt-2 text-xs text-gray-500 ml-13">
+                    {member.total_wins > 0 && <span>{member.total_wins} wins</span>}
+                    {member.total_winnings > 0 && <span>${parseFloat(member.total_winnings).toFixed(0)} won</span>}
+                    {member.total_bounties > 0 && <span>{member.total_bounties} bounties</span>}
+                  </div>
+                )}
               </div>
-              {(member.total_wins > 0 || member.total_winnings > 0) && (
-                <div className="flex gap-4 mt-2 text-xs text-gray-500">
-                  {member.total_wins > 0 && <span>{member.total_wins} wins</span>}
-                  {member.total_winnings > 0 && <span>${parseFloat(member.total_winnings).toFixed(0)} won</span>}
-                  {member.total_bounties > 0 && <span>{member.total_bounties} bounties</span>}
-                </div>
-              )}
-            </div>
-          )
-        })}
+            )
+          })
+        )}
       </div>
     </div>
-  )
-}
-
-function RoleBadge({ role }) {
-  const styles = {
-    owner: 'bg-purple-900 text-purple-300',
-    admin: 'bg-blue-900 text-blue-300',
-    member: 'bg-gray-700 text-gray-400'
-  }
-  return (
-    <span className={`px-2 py-0.5 text-xs rounded-full ${styles[role] || styles.member}`}>
-      {role}
-    </span>
   )
 }
