@@ -126,7 +126,7 @@ export function EventDetail() {
     return (
       <div className="text-center py-20">
         <p className="text-red-400 mb-4">{error}</p>
-        <Link to={`/leagues/${leagueId}`} className="text-green-400 hover:underline">Back to Dashboard</Link>
+        <Link to={`/leagues/${leagueId}`} className="text-pkr-gold-400 hover:underline">Back to Dashboard</Link>
       </div>
     )
   }
@@ -146,15 +146,15 @@ export function EventDetail() {
   return (
     <div className="space-y-6">
       {/* Back nav */}
-      <Link to={`/leagues/${leagueId}`} className="text-gray-400 hover:text-white text-sm">&larr; {league?.name || 'Dashboard'}</Link>
+      <Link to={`/leagues/${leagueId}`} className="text-pkr-gold-300/60 hover:text-pkr-gold-300 text-sm">&larr; {league?.name || 'Dashboard'}</Link>
 
       {/* Event Header */}
-      <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+      <div className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-6">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-white">{event.title}</h1>
-            {event.description && <p className="text-gray-400 mt-1">{event.description}</p>}
-            <div className="flex flex-wrap gap-4 mt-3 text-sm text-gray-400">
+            {event.description && <p className="text-pkr-gold-300/50 mt-1">{event.description}</p>}
+            <div className="flex flex-wrap gap-4 mt-3 text-sm text-pkr-gold-300/50">
               <span>
                 {new Date(event.scheduled_at).toLocaleDateString(undefined, {
                   weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
@@ -177,7 +177,7 @@ export function EventDetail() {
 
         {/* Rebuy cutoff info */}
         {event.rebuy_cutoff_level > 0 && (
-          <div className="mt-3 text-sm text-gray-400">
+          <div className="mt-3 text-sm text-pkr-gold-300/50">
             Rebuys close after Level {event.rebuy_cutoff_level}
           </div>
         )}
@@ -185,27 +185,27 @@ export function EventDetail() {
 
       {/* RSVP Section */}
       {!isCompleted && (
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+        <div className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-4">
           <h2 className="text-lg font-semibold text-white mb-3">RSVP</h2>
           <div className="flex gap-2 mb-4">
             <button
               onClick={() => handleRsvp('going')}
               disabled={rsvpLoading}
-              className={`px-4 py-2 text-sm rounded transition-colors ${myRsvp?.status === 'going' ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+              className={`px-4 py-2 text-sm rounded transition-colors ${myRsvp?.status === 'going' ? 'bg-green-600 text-white' : 'bg-pkr-green-700 text-pkr-gold-300 hover:bg-gray-600'}`}
             >
               Going ({goingList.length})
             </button>
             <button
               onClick={() => handleRsvp('maybe')}
               disabled={rsvpLoading}
-              className={`px-4 py-2 text-sm rounded transition-colors ${myRsvp?.status === 'maybe' ? 'bg-yellow-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+              className={`px-4 py-2 text-sm rounded transition-colors ${myRsvp?.status === 'maybe' ? 'bg-yellow-600 text-white' : 'bg-pkr-green-700 text-pkr-gold-300 hover:bg-gray-600'}`}
             >
               Maybe ({maybeList.length})
             </button>
             <button
               onClick={() => handleRsvp('not_going')}
               disabled={rsvpLoading}
-              className={`px-4 py-2 text-sm rounded transition-colors ${myRsvp?.status === 'not_going' ? 'bg-red-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+              className={`px-4 py-2 text-sm rounded transition-colors ${myRsvp?.status === 'not_going' ? 'bg-red-600 text-white' : 'bg-pkr-green-700 text-pkr-gold-300 hover:bg-gray-600'}`}
             >
               Can't Go ({notGoingList.length})
             </button>
@@ -216,7 +216,7 @@ export function EventDetail() {
             <div className="space-y-2">
               {goingList.length > 0 && (
                 <div>
-                  <span className="text-green-400 text-xs uppercase font-medium">Going</span>
+                  <span className="text-pkr-gold-400 text-xs uppercase font-medium">Going</span>
                   <div className="flex flex-wrap gap-2 mt-1">
                     {goingList.map(r => (
                       <span key={r.id} className="text-sm text-white bg-gray-700 px-2 py-0.5 rounded">{r.display_name}</span>
@@ -239,7 +239,7 @@ export function EventDetail() {
                   <span className="text-red-400 text-xs uppercase font-medium">Can't Go</span>
                   <div className="flex flex-wrap gap-2 mt-1">
                     {notGoingList.map(r => (
-                      <span key={r.id} className="text-sm text-gray-500 bg-gray-700 px-2 py-0.5 rounded">{r.display_name}</span>
+                      <span key={r.id} className="text-sm text-pkr-gold-300/40 bg-gray-700 px-2 py-0.5 rounded">{r.display_name}</span>
                     ))}
                   </div>
                 </div>
@@ -263,7 +263,7 @@ export function EventDetail() {
           <button
             onClick={handleCreateSession}
             disabled={actionLoading}
-            className="px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 transition-colors"
+            className="px-5 py-2 bg-pkr-gold-500 text-pkr-green-900 rounded-lg hover:bg-pkr-gold-400 disabled:opacity-50 transition-colors"
           >
             {actionLoading ? 'Creating...' : 'Create Game Session'}
           </button>
@@ -274,7 +274,7 @@ export function EventDetail() {
           <button
             onClick={handleRegister}
             disabled={actionLoading}
-            className="px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 transition-colors"
+            className="px-5 py-2 bg-pkr-gold-500 text-pkr-green-900 rounded-lg hover:bg-pkr-gold-400 disabled:opacity-50 transition-colors"
           >
             {actionLoading ? 'Registering...' : 'Register for Game'}
           </button>
@@ -289,7 +289,7 @@ export function EventDetail() {
             <button
               onClick={handleUnregister}
               disabled={actionLoading}
-              className="px-5 py-2 text-sm text-gray-400 hover:text-red-400 transition-colors"
+              className="px-5 py-2 text-sm text-pkr-gold-300/50 hover:text-red-400 transition-colors"
             >
               Unregister
             </button>
@@ -334,7 +334,7 @@ export function EventDetail() {
           <h2 className="text-lg font-semibold text-white mb-3">
             {isCompleted ? 'Results' : 'Registered Players'}
           </h2>
-          <div className="bg-gray-800 border border-gray-700 rounded-lg divide-y divide-gray-700">
+          <div className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg divide-y divide-gray-700">
             {participants
               .sort((a, b) => {
                 if (isCompleted) return (a.finish_position || 99) - (b.finish_position || 99)
@@ -344,20 +344,20 @@ export function EventDetail() {
                 <div key={p.id} className="flex items-center justify-between p-3">
                   <div className="flex items-center gap-3">
                     {isCompleted && p.finish_position && (
-                      <span className={`text-sm font-medium w-6 ${p.finish_position === 1 ? 'text-yellow-400' : 'text-gray-500'}`}>
+                      <span className={`text-sm font-medium w-6 ${p.finish_position === 1 ? 'text-yellow-400' : 'text-pkr-gold-300/40'}`}>
                         #{p.finish_position}
                       </span>
                     )}
                     <span className="text-white">{p.display_name}</span>
                     {p.status === 'playing' && <span className="w-2 h-2 rounded-full bg-green-400" />}
-                    {p.status === 'eliminated' && <span className="text-gray-500 text-xs">(eliminated)</span>}
+                    {p.status === 'eliminated' && <span className="text-pkr-gold-300/40 text-xs">(eliminated)</span>}
                     {p.status === 'winner' && <span className="text-yellow-400 text-xs">Winner</span>}
                   </div>
-                  <div className="flex gap-3 text-sm text-gray-400">
+                  <div className="flex gap-3 text-sm text-pkr-gold-300/50">
                     {p.bounty_count > 0 && <span>{p.bounty_count} KO</span>}
                     {p.rebuy_count > 0 && <span>{p.rebuy_count} rebuy</span>}
                     {isCompleted && p.winnings > 0 && (
-                      <span className="text-green-400">${parseFloat(p.winnings).toFixed(0)}</span>
+                      <span className="text-pkr-gold-400">${parseFloat(p.winnings).toFixed(0)}</span>
                     )}
                     {isCompleted && p.points_earned > 0 && (
                       <span>{p.points_earned} pts</span>
@@ -373,11 +373,11 @@ export function EventDetail() {
       {isCompleted && timeline.length > 0 && (
         <div>
           <h2 className="text-lg font-semibold text-white mb-3">Game Timeline</h2>
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+          <div className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-4">
             <div className="space-y-2">
               {timeline.map((evt, i) => (
                 <div key={i} className="flex items-start gap-3 text-sm">
-                  <span className="text-gray-600 text-xs whitespace-nowrap mt-0.5">
+                  <span className="text-pkr-gold-300/30 text-xs whitespace-nowrap mt-0.5">
                     {new Date(evt.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                   </span>
                   <TimelineEvent event={evt} />
@@ -394,7 +394,7 @@ export function EventDetail() {
 function InfoItem({ label, value }) {
   return (
     <div className="text-center">
-      <p className="text-gray-400 text-xs uppercase">{label}</p>
+      <p className="text-pkr-gold-300/50 text-xs uppercase">{label}</p>
       <p className="text-white font-medium mt-0.5">{value}</p>
     </div>
   )
@@ -406,7 +406,7 @@ function StatusBadge({ status }) {
     pending: 'bg-yellow-900 text-yellow-300',
     running: 'bg-green-900 text-green-300',
     paused: 'bg-yellow-900 text-yellow-300',
-    completed: 'bg-gray-700 text-gray-300',
+    completed: 'bg-pkr-green-700 text-pkr-gold-300',
     cancelled: 'bg-red-900 text-red-300'
   }
   return (
@@ -420,17 +420,17 @@ function TimelineEvent({ event }) {
   const data = event.event_data ? (typeof event.event_data === 'string' ? JSON.parse(event.event_data) : event.event_data) : {}
 
   const messages = {
-    GAME_STARTED: () => <span className="text-green-400">Game started</span>,
+    GAME_STARTED: () => <span className="text-pkr-gold-400">Game started</span>,
     PLAYER_REGISTERED: () => <span className="text-gray-300"><span className="text-white">{data.playerName || 'Player'}</span> registered</span>,
     PLAYER_ELIMINATED: () => <span className="text-red-400"><span className="text-white">{data.playerName || 'Player'}</span> eliminated{data.eliminatorName ? ` by ${data.eliminatorName}` : ''} (#{data.position})</span>,
     PLAYER_REBUY: () => <span className="text-yellow-400"><span className="text-white">{data.playerName || 'Player'}</span> rebought in</span>,
     GAME_ENDED: () => <span className="text-blue-400">Game completed</span>,
-    TIMER_PAUSED: () => <span className="text-gray-400">Timer paused</span>,
-    TIMER_RESUMED: () => <span className="text-gray-400">Timer resumed</span>,
+    TIMER_PAUSED: () => <span className="text-pkr-gold-300/50">Timer paused</span>,
+    TIMER_RESUMED: () => <span className="text-pkr-gold-300/50">Timer resumed</span>,
     BLIND_LEVEL_UP: () => <span className="text-purple-400">Blinds up to Level {data.level}</span>
   }
 
   const render = messages[event.event_type]
-  if (!render) return <span className="text-gray-500">{event.event_type}</span>
+  if (!render) return <span className="text-pkr-gold-300/40">{event.event_type}</span>
   return render()
 }

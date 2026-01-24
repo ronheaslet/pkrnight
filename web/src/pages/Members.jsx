@@ -39,7 +39,7 @@ export function Members() {
     return (
       <div className="text-center py-20">
         <p className="text-red-400 mb-4">{error}</p>
-        <Link to={`/leagues/${leagueId}`} className="text-green-400 hover:underline">Back to Dashboard</Link>
+        <Link to={`/leagues/${leagueId}`} className="text-pkr-gold-400 hover:underline">Back to Dashboard</Link>
       </div>
     )
   }
@@ -78,8 +78,8 @@ export function Members() {
   return (
     <div className="space-y-6">
       <div>
-        <Link to={`/leagues/${leagueId}`} className="text-gray-400 hover:text-white text-sm">&larr; {league?.name || 'Dashboard'}</Link>
-        <h1 className="text-2xl font-bold text-white mt-1">Members</h1>
+        <Link to={`/leagues/${leagueId}`} className="text-pkr-gold-300/60 hover:text-pkr-gold-300 text-sm">&larr; {league?.name || 'Dashboard'}</Link>
+        <h1 className="text-2xl font-display font-bold text-pkr-gold-400 mt-1">Members</h1>
       </div>
 
       {/* Search */}
@@ -89,20 +89,20 @@ export function Members() {
           placeholder="Search members..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-green-500"
+          className="w-full px-4 py-2 bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg text-white placeholder-pkr-gold-300/30 focus:outline-none focus:border-pkr-gold-500"
         />
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex gap-1 bg-gray-800 border border-gray-700 rounded-lg p-1">
+      <div className="flex gap-1 bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg p-1">
         {tabs.map(tab => (
           <button
             key={tab.key}
             onClick={() => setFilter(tab.key)}
             className={`flex-1 px-3 py-1.5 text-sm rounded-md transition-colors ${
               filter === tab.key
-                ? 'bg-green-600 text-white'
-                : 'text-gray-400 hover:text-white'
+                ? 'bg-pkr-gold-500 text-pkr-green-900'
+                : 'text-pkr-gold-300/50 hover:text-white'
             }`}
           >
             {tab.label} ({counts[tab.key]})
@@ -111,9 +111,9 @@ export function Members() {
       </div>
 
       {/* Member List */}
-      <div className="bg-gray-800 border border-gray-700 rounded-lg divide-y divide-gray-700">
+      <div className="bg-pkr-green-800 border border-pkr-green-700/50 rounded-lg divide-y divide-pkr-green-700/50">
         {filteredMembers.length === 0 ? (
-          <div className="p-6 text-center text-gray-500">No members found</div>
+          <div className="p-6 text-center text-pkr-gold-300/40">No members found</div>
         ) : (
           filteredMembers.map((member) => {
             const gamesPlayed = member.games_played || 0
@@ -150,21 +150,21 @@ export function Members() {
                       ))}
                     </div>
                     {member.full_name && member.full_name !== name && (
-                      <p className="text-gray-500 text-sm mt-0.5">{member.full_name}</p>
+                      <p className="text-pkr-gold-300/40 text-sm mt-0.5">{member.full_name}</p>
                     )}
                     {isGuest && guestThreshold > 0 && (
-                      <p className="text-gray-600 text-xs mt-0.5">
+                      <p className="text-pkr-gold-300/30 text-xs mt-0.5">
                         {gamesPlayed} of {guestThreshold} games{isEligible ? ' - eligible for membership' : ''}
                       </p>
                     )}
                   </div>
                   <div className="text-right text-sm shrink-0">
-                    <p className="text-gray-400">{gamesPlayed} games</p>
-                    <p className="text-green-400">{member.total_points || 0} pts</p>
+                    <p className="text-pkr-gold-300/50">{gamesPlayed} games</p>
+                    <p className="text-pkr-gold-400">{member.total_points || 0} pts</p>
                   </div>
                 </div>
                 {(member.total_wins > 0 || member.total_winnings > 0) && (
-                  <div className="flex gap-4 mt-2 text-xs text-gray-500 ml-13">
+                  <div className="flex gap-4 mt-2 text-xs text-pkr-gold-300/40 ml-13">
                     {member.total_wins > 0 && <span>{member.total_wins} wins</span>}
                     {member.total_winnings > 0 && <span>${parseFloat(member.total_winnings).toFixed(0)} won</span>}
                     {member.total_bounties > 0 && <span>{member.total_bounties} bounties</span>}

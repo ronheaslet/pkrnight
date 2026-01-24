@@ -16,6 +16,7 @@ import { Game } from './pages/Game'
 import { DealerDisplay } from './pages/DealerDisplay'
 import { Profile } from './pages/Profile'
 import { PublicStandings } from './pages/PublicStandings'
+import { ChatPage } from './pages/ChatPage'
 import { Spinner } from './components/Spinner'
 import { NotificationToast } from './components/NotificationToast'
 
@@ -74,6 +75,7 @@ function App() {
             <Route path="/leagues/:leagueId/events/:eventId" element={<EventDetail />} />
             <Route path="/leagues/:leagueId/settings" element={<Settings />} />
             <Route path="/leagues/:leagueId/standings" element={<Standings />} />
+            <Route path="/leagues/:leagueId/chat" element={<ChatPage />} />
             <Route path="/leagues/:leagueId/admin" element={<AdminDashboard />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/profile" element={<Profile />} />
