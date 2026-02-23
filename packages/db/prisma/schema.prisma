@@ -1,0 +1,1230 @@
+// ============================================================
+// PKR Night v3 — Complete Prisma Schema
+// Stack: Neon Postgres + Prisma ORM
+// Generated: 2026-02-22
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum ClubType {
+  HOME_GAME
+  PUB_POKER
+  CIRCUIT
+}
+
+enum PlanTier {
+  FREE
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+enum MembershipStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+  INVITED
+  PENDING
+}
+
+enum MemberType {
+  PAID
+  GUEST
+}
+
+enum SystemRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+  COMPLETED
+}
+
+enum RsvpStatus {
+  GOING
+  NOT_GOING
+  MAYBE
+  PENDING
+}
+
+enum GameStatus {
+  PENDING
+  ACTIVE
+  PAUSED
+  BREAK
+  COMPLETED
+  CANCELLED
+}
+
+enum GameSessionStatus {
+  ACTIVE
+  ELIMINATED
+  WINNER
+}
+
+enum TransactionType {
+  BUY_IN
+  REBUY
+  ADD_ON
+  PAYOUT
+  BOUNTY_COLLECTED
+  BOUNTY_PAID_OUT
+  EXPENSE
+  DUES_PAYMENT
+  TREASURY_ADJUSTMENT
+  PLAYER_BALANCE_ADJUSTMENT
+}
+
+enum TransactionCategory {
+  GAME
+  DUES
+  EXPENSE_FOOD
+  EXPENSE_DRINKS
+  EXPENSE_VENUE
+  EXPENSE_DEALER_TIP
+  EXPENSE_OTHER
+  TREASURY
+  PLAYER_BALANCE
+}
+
+enum ChipMode {
+  CASH
+  TOURNAMENT
+}
+
+enum BonusChipMode {
+  TRACKED
+  SELF_REPORT
+  OFF
+}
+
+enum FeatureState {
+  GLOBALLY_ON
+  CLUB_CONFIGURABLE
+  GLOBALLY_OFF
+}
+
+enum NotificationType {
+  INVITE
+  REMINDER
+  RESULTS
+  TROPHY
+  ANNOUNCEMENT
+  CHIP_VALUE_CHANGE
+  RSVP_CONFIRMATION
+  DUES_REMINDER
+  TABLE_MOVE
+  GAME_START
+  SYSTEM
+}
+
+enum NotificationChannel {
+  IN_APP
+  SMS
+  BOTH
+}
+
+enum ReferralSource {
+  LINK
+  QR_SCAN
+  EVENT_INVITE
+  ORGANIC
+}
+
+enum PenaltyType {
+  SIT_OUT
+  CHIP_PENALTY
+  WARNING
+  DISQUALIFICATION
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  TRANSFER
+  APPROVE
+  REJECT
+  VOID
+}
+
+enum ErrorSeverity {
+  P0_CRITICAL
+  P1_HIGH
+  P2_MEDIUM
+  P3_LOW
+}
+
+// ============================================================
+// CORE IDENTITY
+// ============================================================
+
+model Person {
+  id           String    @id @default(cuid())
+  phone        String?   @unique
+  appleId      String?   @unique
+  googleId     String?   @unique
+  displayName  String
+  avatarUrl    String?
+  email        String?
+  timezone     String    @default("America/New_York")
+  isSuperAdmin Boolean   @default(false)
+  isVerified   Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastActiveAt DateTime?
+
+  memberships      Membership[]
+  referralCode     ReferralCode?
+  referredByEvent  ReferralEvent?  @relation("ReferredPerson")
+  referralsMade    ReferralEvent[] @relation("ReferralSource")
+  networkEdgesA    NetworkEdge[]   @relation("PersonA")
+  networkEdgesB    NetworkEdge[]   @relation("PersonB")
+  gameSessions     GameSession[]
+  notifications    Notification[]
+  chatMessages     ChatMessage[]
+  chipScans        ChipScan[]
+  walkInClaims     WalkInEntry[]   @relation("ClaimedBy")
+  auditLogs        AuditLog[]      @relation("AuditActor")
+  trophyAwards       TrophyAward[]
+  ownedCircuits      Circuit[]         @relation("CircuitOwner")
+  circuitMembers     CircuitMember[]
+  circuitStandings   CircuitStanding[]
+
+  @@index([phone])
+  @@index([appleId])
+  @@index([googleId])
+  @@index([isSuperAdmin])
+}
+
+// ============================================================
+// CLUBS & MULTI-TENANCY
+// ============================================================
+
+model Club {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  clubType    ClubType
+  planTier    PlanTier @default(FREE)
+  brandingKey String   @unique @default(cuid())
+
+  logoUrl      String?
+  primaryColor String?
+  accentColor  String?
+  tagline      String?
+  customDomain String?  @unique
+
+  // Phase 9 — public profile fields
+  publicBio    String?
+  venueAddress String?
+  venueCity    String?
+  socialLink   String?
+  qrCodeUrl    String?
+  referralCode String?  @unique
+
+  timezone  String  @default("America/New_York")
+  isActive  Boolean @default(true)
+  isPublic  Boolean @default(false)
+
+  stripeCustomerId String?   @unique
+  stripeSubId      String?   @unique
+  planExpiresAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships        Membership[]
+  seasons            Season[]
+  events             Event[]
+  games              Game[]
+  transactions       Transaction[]
+  duesRecords        DuesRecord[]
+  treasury           TreasuryBalance?
+  playerBalances     PlayerBalance[]
+  auditLogs          AuditLog[]
+  featureFlags       ClubFeatureFlag[]
+  customRoles        CustomRole[]
+  chipSets           ChipSet[]
+  blindStructures    BlindStructure[]
+  savedLocations     SavedLocation[]
+  chatMessages       ChatMessage[]
+  notifications      Notification[]
+  chipScans          ChipScan[]
+  errorLogs          ErrorLog[]
+  aiUsageLogs        AIUsageLog[]
+  walkInEntries      WalkInEntry[]
+  venueProfile       VenueProfile?
+  circuitVenues      CircuitVenue[]
+  trophies           Trophy[]
+  clubReferralEvents ReferralEvent[]     @relation("ClubReferrals")
+
+  @@index([slug])
+  @@index([clubType])
+  @@index([planTier])
+  @@index([isActive])
+}
+
+// ============================================================
+// MEMBERSHIP & ROLE SYSTEM
+// ============================================================
+
+model Membership {
+  id         String           @id @default(cuid())
+  clubId     String
+  personId   String
+  systemRole SystemRole       @default(MEMBER)
+  memberType MemberType       @default(PAID)
+  status     MembershipStatus @default(ACTIVE)
+  joinedAt   DateTime         @default(now())
+  invitedBy  String?
+  updatedAt  DateTime         @updatedAt
+
+  club         Club               @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  person       Person             @relation(fields: [personId], references: [id], onDelete: Cascade)
+  specialRoles MemberSpecialRole[]
+  rsvps        Rsvp[]
+
+  @@unique([clubId, personId])
+  @@index([clubId])
+  @@index([personId])
+  @@index([systemRole])
+  @@index([status])
+}
+
+model CustomRole {
+  id          String  @id @default(cuid())
+  clubId      String
+  name        String
+  emoji       String
+  description String?
+  isSystem    Boolean @default(false)
+
+  pauseTimer         Boolean @default(false)
+  startGame          Boolean @default(false)
+  manageRebuys       Boolean @default(false)
+  eliminatePlayers   Boolean @default(false)
+  manageMoney        Boolean @default(false)
+  postTransactions   Boolean @default(false)
+  viewFinancials     Boolean @default(false)
+  exportReports      Boolean @default(false)
+  viewAuditLog       Boolean @default(false)
+  issuePenalties     Boolean @default(false)
+  makeAnnouncements  Boolean @default(false)
+  awardTrophies      Boolean @default(false)
+  postToFeed         Boolean @default(false)
+  postExpenseOnly    Boolean @default(false)
+  pauseAllTables     Boolean @default(false)
+  clubWideAnnounce   Boolean @default(false)
+  levelOverride      Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  club        Club               @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  assignments MemberSpecialRole[]
+
+  @@unique([clubId, name])
+  @@index([clubId])
+}
+
+model MemberSpecialRole {
+  id           String   @id @default(cuid())
+  membershipId String
+  customRoleId String
+  assignedAt   DateTime @default(now())
+  assignedBy   String
+
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  customRole CustomRole @relation(fields: [customRoleId], references: [id], onDelete: Cascade)
+
+  @@unique([membershipId, customRoleId])
+  @@index([membershipId])
+  @@index([customRoleId])
+}
+
+// ============================================================
+// SEASONS & EVENTS
+// ============================================================
+
+model Season {
+  id        String    @id @default(cuid())
+  clubId    String
+  name      String
+  startDate DateTime
+  endDate   DateTime?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  club         Club          @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  events       Event[]
+  duesRecords  DuesRecord[]
+  trophyAwards TrophyAward[]
+
+  @@index([clubId])
+  @@index([isActive])
+}
+
+model SavedLocation {
+  id        String   @id @default(cuid())
+  clubId    String
+  name      String
+  address   String
+  lat       Float?
+  lng       Float?
+  createdAt DateTime @default(now())
+
+  club   Club    @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  events Event[]
+
+  @@index([clubId])
+}
+
+model Event {
+  id          String      @id @default(cuid())
+  clubId      String
+  seasonId    String?
+  createdBy   String
+  title       String
+  description String?
+  status      EventStatus @default(DRAFT)
+
+  startsAt DateTime
+  endsAt   DateTime?
+
+  savedLocationId String?
+  locationName    String?
+  locationAddress String?
+  locationLat     Float?
+  locationLng     Float?
+
+  buyInAmount      Float   @default(0)
+  rebuyAmount      Float   @default(0)
+  addOnAmount      Float   @default(0)
+  rebuyLimit       Int?
+  addOnAllowed     Boolean @default(false)
+  addOnCutoffLevel Int?
+  bountyEnabled    Boolean @default(false)
+  bountyAmount     Float   @default(0)
+  guestEligible    Boolean @default(false)
+  maxPlayers       Int?
+
+  blindStructureId String?
+  chipSetId        String?
+
+  reminder48h Boolean @default(true)
+  reminder24h Boolean @default(true)
+  reminder2h  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  club           Club            @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  season         Season?         @relation(fields: [seasonId], references: [id])
+  savedLocation  SavedLocation?  @relation(fields: [savedLocationId], references: [id])
+  blindStructure BlindStructure? @relation(fields: [blindStructureId], references: [id])
+  chipSet        ChipSet?        @relation(fields: [chipSetId], references: [id])
+  rsvps          Rsvp[]
+  game           Game?
+
+  @@index([clubId])
+  @@index([seasonId])
+  @@index([startsAt])
+  @@index([status])
+}
+
+model Rsvp {
+  id           String     @id @default(cuid())
+  eventId      String
+  membershipId String?
+  guestToken   String?    @unique
+  guestName    String?
+  guestPhone   String?
+  status       RsvpStatus @default(PENDING)
+  respondedAt  DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  membership Membership? @relation(fields: [membershipId], references: [id])
+
+  @@unique([eventId, membershipId])
+  @@index([eventId])
+  @@index([guestToken])
+  @@index([status])
+}
+
+// ============================================================
+// BLIND STRUCTURES
+// ============================================================
+
+model BlindStructure {
+  id        String   @id @default(cuid())
+  clubId    String
+  name      String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  club   Club         @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  levels BlindLevel[]
+  events Event[]
+  games  Game[]
+
+  @@index([clubId])
+}
+
+model BlindLevel {
+  id               String  @id @default(cuid())
+  blindStructureId String
+  levelNumber      Int
+  smallBlind       Int
+  bigBlind         Int
+  ante             Int     @default(0)
+  durationMinutes  Int     @default(20)
+  isBreak          Boolean @default(false)
+  breakLabel       String?
+
+  blindStructure BlindStructure @relation(fields: [blindStructureId], references: [id], onDelete: Cascade)
+
+  @@unique([blindStructureId, levelNumber])
+  @@index([blindStructureId])
+}
+
+// ============================================================
+// LIVE GAME ENGINE
+// ============================================================
+
+model Game {
+  id               String     @id @default(cuid())
+  clubId           String
+  eventId          String     @unique
+  blindStructureId String?
+  chipSetId        String?
+
+  status GameStatus @default(PENDING)
+
+  currentLevel   Int      @default(1)
+  levelStartedAt DateTime?
+  pausedAt       DateTime?
+  totalPausedMs  Int      @default(0)
+
+  playersRegistered Int @default(0)
+  playersRemaining  Int @default(0)
+
+  buyInAmount   Float   @default(0)
+  rebuyAmount   Float   @default(0)
+  addOnAmount   Float   @default(0)
+  rebuyLimit    Int?
+  bountyEnabled Boolean @default(false)
+  bountyAmount  Float   @default(0)
+
+  prizePool   Float @default(0)
+  totalRebuys Int   @default(0)
+  totalAddOns Int   @default(0)
+
+  startedAt         DateTime?
+  completedAt       DateTime?
+  financialLockedAt DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  club           Club            @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  event          Event           @relation(fields: [eventId], references: [id])
+  blindStructure BlindStructure? @relation(fields: [blindStructureId], references: [id])
+  chipSet        ChipSet?        @relation(fields: [chipSetId], references: [id])
+  gameSessions   GameSession[]
+  transactions   Transaction[]
+  chipScans      ChipScan[]
+  walkInEntries  WalkInEntry[]
+  tables         GameTable[]
+  penalties      Penalty[]
+
+  @@index([clubId])
+  @@index([status])
+  @@index([startedAt])
+  @@index([clubId, status])
+  @@index([clubId, completedAt])
+}
+
+model GameSession {
+  id       String            @id @default(cuid())
+  gameId   String
+  personId String
+  clubId   String
+
+  status      GameSessionStatus @default(ACTIVE)
+  tableNumber Int?
+  seatNumber  Int?
+
+  currentStack  Int?
+  startingStack Int?
+
+  finishPosition Int?
+  rebuys         Int   @default(0)
+  addOns         Int   @default(0)
+  bountiesWon    Int   @default(0)
+  bountiesLost   Int   @default(0)
+  payout         Float @default(0)
+  pointsEarned   Int   @default(0)
+
+  buyInPaid Boolean @default(false)
+  totalPaid Float   @default(0)
+
+  isWalkIn  Boolean @default(false)
+  walkInId  String?
+
+  eliminatedAt DateTime?
+  eliminatedBy String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  game       Game       @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  person     Person     @relation(fields: [personId], references: [id])
+  chipScans  ChipScan[]
+
+  @@unique([gameId, personId])
+  @@index([gameId])
+  @@index([personId])
+  @@index([clubId])
+  @@index([status])
+}
+
+model GameTable {
+  id          String   @id @default(cuid())
+  gameId      String
+  tableNumber Int
+  maxSeats    Int      @default(9)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, tableNumber])
+  @@index([gameId])
+}
+
+model Penalty {
+  id              String      @id @default(cuid())
+  gameId          String
+  clubId          String
+  issuedTo        String
+  issuedBy        String
+  penaltyType     PenaltyType
+  durationMinutes Int?
+  chipAmount      Int?
+  reason          String?
+  isResolved      Boolean     @default(false)
+  resolvedAt      DateTime?
+  createdAt       DateTime    @default(now())
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@index([gameId])
+  @@index([issuedTo])
+}
+
+// ============================================================
+// CHIP SETS & SCANNER
+// ============================================================
+
+model ChipSet {
+  id        String   @id @default(cuid())
+  clubId    String
+  name      String
+  mode      ChipMode @default(TOURNAMENT)
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  club          Club               @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  denominations ChipDenomination[]
+  games         Game[]
+  events        Event[]
+
+  @@index([clubId])
+  @@index([isDefault])
+}
+
+model ChipDenomination {
+  id        String   @id @default(cuid())
+  chipSetId String
+  colorName String
+  colorHex  String
+  value     Float
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  chipSet       ChipSet                  @relation(fields: [chipSetId], references: [id], onDelete: Cascade)
+  changeHistory ChipDenominationChange[]
+
+  @@unique([chipSetId, colorName])
+  @@index([chipSetId])
+}
+
+model ChipDenominationChange {
+  id                 String   @id @default(cuid())
+  chipDenominationId String
+  gameId             String?
+  clubId             String
+  changedBy          String
+  previousValue      Float
+  newValue           Float
+  applyRetroactive   Boolean  @default(true)
+  notificationSent   Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  chipDenomination ChipDenomination @relation(fields: [chipDenominationId], references: [id])
+
+  @@index([chipDenominationId])
+  @@index([gameId])
+  @@index([createdAt])
+}
+
+model ChipScan {
+  id            String  @id @default(cuid())
+  clubId        String
+  personId      String
+  gameId        String?
+  gameSessionId String?
+  chipSetId     String
+
+  chipCounts      Json
+  totalValue      Float
+  confidenceLevel String
+  confidenceNote  String?
+
+  claudeTokensIn  Int
+  claudeTokensOut Int
+  claudeModel     String
+  claudeLatencyMs Int
+
+  savedToSession Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  club        Club         @relation(fields: [clubId], references: [id])
+  person      Person       @relation(fields: [personId], references: [id])
+  game        Game?        @relation(fields: [gameId], references: [id])
+  gameSession GameSession? @relation(fields: [gameSessionId], references: [id])
+
+  @@index([clubId])
+  @@index([personId])
+  @@index([gameId])
+  @@index([gameSessionId])
+  @@index([createdAt])
+}
+
+// ============================================================
+// FINANCIAL SYSTEM
+// ============================================================
+
+model Transaction {
+  id       String              @id @default(cuid())
+  clubId   String
+  gameId   String?
+  seasonId String?
+  personId String?
+  actorId  String
+
+  type        TransactionType
+  category    TransactionCategory
+  amount      Float
+  description String?
+  method      String?
+
+  bountyFromPersonId String?
+
+  isVoided   Boolean   @default(false)
+  voidedBy   String?
+  voidedAt   DateTime?
+  voidReason String?
+
+  createdAt DateTime @default(now())
+
+  club     Club       @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  game     Game?      @relation(fields: [gameId], references: [id])
+  auditLog AuditLog[]
+
+  @@index([clubId])
+  @@index([gameId])
+  @@index([personId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model DuesRecord {
+  id       String  @id @default(cuid())
+  clubId   String
+  personId String
+  seasonId String
+
+  amountDue   Float
+  amountPaid  Float    @default(0)
+  method      String?
+  collectedBy String?
+
+  isPaid  Boolean   @default(false)
+  paidAt  DateTime?
+  dueDate DateTime?
+  notes   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  club   Club   @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  season Season @relation(fields: [seasonId], references: [id])
+
+  @@unique([clubId, personId, seasonId])
+  @@index([clubId])
+  @@index([personId])
+  @@index([isPaid])
+}
+
+model TreasuryBalance {
+  id             String   @id @default(cuid())
+  clubId         String   @unique
+  currentBalance Float    @default(0)
+  minimumReserve Float    @default(0)
+  updatedAt      DateTime @updatedAt
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+}
+
+model PlayerBalance {
+  id            String    @id @default(cuid())
+  clubId        String
+  personId      String
+  balance       Float     @default(0)
+  lastSettledAt DateTime?
+  updatedAt     DateTime  @updatedAt
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@unique([clubId, personId])
+  @@index([clubId])
+  @@index([personId])
+}
+
+model AuditLog {
+  id            String      @id @default(cuid())
+  clubId        String
+  actorId       String
+  action        AuditAction
+  entityType    String
+  entityId      String
+  previousValue Json?
+  newValue      Json?
+  transactionId String?
+  ipAddress     String?
+  note          String?
+  createdAt     DateTime    @default(now())
+
+  club        Club         @relation(fields: [clubId], references: [id])
+  actor       Person       @relation("AuditActor", fields: [actorId], references: [id])
+  transaction Transaction? @relation(fields: [transactionId], references: [id])
+
+  @@index([clubId])
+  @@index([actorId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+// ============================================================
+// TROPHIES & ACHIEVEMENTS
+// ============================================================
+
+model Trophy {
+  id               String   @id @default(cuid())
+  clubId           String
+  name             String
+  description      String?
+  emoji            String
+  isAutomatic      Boolean  @default(false)
+  triggerCondition Json?
+  createdAt        DateTime @default(now())
+
+  club   Club          @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  awards TrophyAward[]
+
+  @@index([clubId])
+}
+
+model TrophyAward {
+  id        String   @id @default(cuid())
+  trophyId  String
+  personId  String
+  clubId    String
+  seasonId  String?
+  gameId    String?
+  awardedBy String
+  note      String?
+  createdAt DateTime @default(now())
+
+  trophy Trophy  @relation(fields: [trophyId], references: [id], onDelete: Cascade)
+  person Person  @relation(fields: [personId], references: [id])
+  season Season? @relation(fields: [seasonId], references: [id])
+
+  @@index([trophyId])
+  @@index([personId])
+  @@index([clubId])
+  @@index([seasonId])
+}
+
+// ============================================================
+// FEATURE FLAG SYSTEM
+// ============================================================
+
+model GlobalFeatureFlag {
+  id              String       @id @default(cuid())
+  featureKey      String       @unique
+  name            String
+  description     String?
+  state           FeatureState @default(CLUB_CONFIGURABLE)
+  isContextLocked Boolean      @default(false)
+  contextNote     String?
+  updatedAt       DateTime     @updatedAt
+  updatedBy       String?
+}
+
+model ClubFeatureFlag {
+  id         String   @id @default(cuid())
+  clubId     String
+  featureKey String
+  isEnabled  Boolean  @default(true)
+  updatedAt  DateTime @updatedAt
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@unique([clubId, featureKey])
+  @@index([clubId])
+}
+
+// ============================================================
+// NOTIFICATIONS & INBOX
+// ============================================================
+
+model Notification {
+  id       String              @id @default(cuid())
+  clubId   String?
+  personId String
+  type     NotificationType
+  channel  NotificationChannel @default(IN_APP)
+
+  title String
+  body  String
+  data  Json?
+
+  isRead    Boolean   @default(false)
+  readAt    DateTime?
+  smsSentAt DateTime?
+  smsStatus String?
+
+  createdAt DateTime @default(now())
+
+  club   Club?  @relation(fields: [clubId], references: [id])
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@index([personId])
+  @@index([clubId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+model ChatMessage {
+  id             String    @id @default(cuid())
+  clubId         String
+  personId       String
+  body           String
+  isAnnouncement Boolean   @default(false)
+  isPinned       Boolean   @default(false)
+  editedAt       DateTime?
+  deletedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  club   Club   @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  person Person @relation(fields: [personId], references: [id])
+
+  @@index([clubId])
+  @@index([createdAt])
+}
+
+// ============================================================
+// GROWTH & REFERRAL SYSTEM
+// ============================================================
+
+model ReferralCode {
+  id             String   @id @default(cuid())
+  personId       String   @unique
+  code           String   @unique
+  qrCodeUrl      String?
+  totalReferrals Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  person         Person          @relation(fields: [personId], references: [id], onDelete: Cascade)
+  referralEvents ReferralEvent[]
+}
+
+model ReferralEvent {
+  id               String        @id @default(cuid())
+  referralCodeId   String?
+  referredPersonId String?       @unique
+  clubId           String?
+  source           ReferralSource
+
+  deviceType    String?
+  locationCity  String?
+  locationState String?
+
+  linkTappedAt     DateTime  @default(now())
+  rsvpAt           DateTime?
+  accountCreatedAt DateTime?
+  firstGameAt      DateTime?
+  active30dAt      DateTime?
+
+  referralCode   ReferralCode? @relation(fields: [referralCodeId], references: [id])
+  referredPerson Person?       @relation("ReferredPerson", fields: [referredPersonId], references: [id], map: "ReferralEvent_referredPerson_fkey")
+  referralSource Person?       @relation("ReferralSource", fields: [referredPersonId], references: [id], map: "ReferralEvent_referralSource_fkey")
+  club           Club?         @relation("ClubReferrals", fields: [clubId], references: [id])
+
+  @@index([referralCodeId])
+  @@index([clubId])
+  @@index([referredPersonId])
+  @@index([source])
+  @@index([linkTappedAt])
+}
+
+model NetworkEdge {
+  id            String   @id @default(cuid())
+  personAId     String
+  personBId     String
+  firstPlayedAt DateTime @default(now())
+  lastPlayedAt  DateTime @default(now())
+  gamesShared   Int      @default(1)
+
+  personA Person @relation("PersonA", fields: [personAId], references: [id], onDelete: Cascade)
+  personB Person @relation("PersonB", fields: [personBId], references: [id], onDelete: Cascade)
+
+  @@unique([personAId, personBId])
+  @@index([personAId])
+  @@index([personBId])
+}
+
+// ============================================================
+// PUB POKER SPECIFIC
+// ============================================================
+
+model VenueProfile {
+  id              String   @id @default(cuid())
+  clubId          String   @unique
+  venueName       String
+  address         String
+  lat             Float?
+  lng             Float?
+  operatingNights String[]
+  contactPhone    String?
+  contactEmail    String?
+  websiteUrl      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+}
+
+model BonusChipTransaction {
+  id         String        @id @default(cuid())
+  clubId     String
+  gameId     String
+  personId   String
+  amount     Int
+  mode       BonusChipMode
+  verifiedBy String?
+  createdAt  DateTime      @default(now())
+
+  @@index([clubId])
+  @@index([gameId])
+  @@index([personId])
+}
+
+model WalkInEntry {
+  id          String    @id @default(cuid())
+  clubId      String
+  gameId      String
+  tempName    String
+  isClaimed   Boolean   @default(false)
+  claimedById String?
+  claimedAt   DateTime?
+  claimToken  String    @unique @default(cuid())
+  createdAt   DateTime  @default(now())
+
+  club      Club    @relation(fields: [clubId], references: [id])
+  game      Game    @relation(fields: [gameId], references: [id])
+  claimedBy Person? @relation("ClaimedBy", fields: [claimedById], references: [id])
+
+  @@index([clubId])
+  @@index([gameId])
+  @@index([claimToken])
+}
+
+model Circuit {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  logoUrl     String?
+  city        String?
+  state       String?
+  isActive    Boolean  @default(true)
+  isPublic    Boolean  @default(false)
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner    Person          @relation("CircuitOwner", fields: [ownerId], references: [id])
+  venues   CircuitVenue[]
+  seasons  CircuitSeason[]
+  members  CircuitMember[]
+}
+
+model CircuitVenue {
+  id         String   @id @default(cuid())
+  circuitId  String
+  clubId     String
+  venueLabel String?
+  joinedAt   DateTime @default(now())
+  isActive   Boolean  @default(true)
+
+  circuit Circuit @relation(fields: [circuitId], references: [id], onDelete: Cascade)
+  club    Club    @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@unique([circuitId, clubId])
+  @@index([circuitId])
+  @@index([clubId])
+}
+
+model CircuitSeason {
+  id            String   @id @default(cuid())
+  circuitId     String
+  name          String
+  startDate     DateTime
+  endDate       DateTime
+  isActive      Boolean  @default(false)
+  pointsFormula String   @default("standard")
+
+  circuit   Circuit           @relation(fields: [circuitId], references: [id], onDelete: Cascade)
+  standings CircuitStanding[]
+
+  @@index([circuitId])
+}
+
+model CircuitMember {
+  id          String   @id @default(cuid())
+  circuitId   String
+  userId      String
+  joinedAt    DateTime @default(now())
+  totalPoints Int      @default(0)
+  gamesPlayed Int      @default(0)
+  bestFinish  Int?
+
+  circuit Circuit @relation(fields: [circuitId], references: [id], onDelete: Cascade)
+  user    Person  @relation(fields: [userId], references: [id])
+
+  @@unique([circuitId, userId])
+  @@index([circuitId])
+  @@index([userId])
+}
+
+model CircuitStanding {
+  id          String   @id @default(cuid())
+  seasonId    String
+  userId      String
+  rank        Int
+  points      Int
+  gamesPlayed Int
+  updatedAt   DateTime @updatedAt
+
+  season CircuitSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  user   Person        @relation(fields: [userId], references: [id])
+
+  @@unique([seasonId, userId])
+  @@index([seasonId])
+  @@index([seasonId, rank])
+  @@index([seasonId, userId])
+}
+
+// ============================================================
+// OBSERVABILITY & AI USAGE
+// ============================================================
+
+model ErrorLog {
+  id             String        @id @default(cuid())
+  clubId         String?
+  personId       String?
+  severity       ErrorSeverity
+  errorType      String
+  message        String
+  stackTrace     String?
+  route          String?
+  requestData    Json?
+  smsSentToAdmin Boolean       @default(false)
+  resolvedAt     DateTime?
+  createdAt      DateTime      @default(now())
+
+  club Club? @relation(fields: [clubId], references: [id])
+
+  @@index([clubId])
+  @@index([severity])
+  @@index([createdAt])
+  @@index([smsSentToAdmin])
+  @@index([resolvedAt, createdAt])
+}
+
+model AIUsageLog {
+  id        String   @id @default(cuid())
+  clubId    String?
+  personId  String?
+  feature   String
+  model     String
+  tokensIn  Int
+  tokensOut Int
+  costUsd   Float
+  latencyMs Int
+  createdAt DateTime @default(now())
+
+  club Club? @relation(fields: [clubId], references: [id])
+
+  @@index([clubId])
+  @@index([feature])
+  @@index([createdAt])
+}
+
+// ============================================================
+// PAGE VIEW TRACKING
+// ============================================================
+
+model PageViewLog {
+  id        String   @id @default(cuid())
+  clubSlug  String
+  createdAt DateTime @default(now())
+
+  @@index([clubSlug])
+  @@index([createdAt])
+  @@index([clubSlug, createdAt])
+}
