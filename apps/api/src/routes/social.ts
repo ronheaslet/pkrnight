@@ -42,8 +42,16 @@ import {
 
 export const socialRoutes = new Hono();
 
-// All social routes require auth
-socialRoutes.use("*", createAuthMiddleware());
+// Auth middleware scoped to social route paths only
+// (socialRoutes is mounted at "/" so use("*") would intercept ALL routes including /auth)
+socialRoutes.use("/inbox/*", createAuthMiddleware());
+socialRoutes.use("/inbox", createAuthMiddleware());
+socialRoutes.use("/network/*", createAuthMiddleware());
+socialRoutes.use("/network", createAuthMiddleware());
+socialRoutes.use("/invites/*", createAuthMiddleware());
+socialRoutes.use("/clubs/:clubId/broadcast/*", createAuthMiddleware());
+socialRoutes.use("/clubs/:clubId/chat/*", createAuthMiddleware());
+socialRoutes.use("/clubs/:clubId/chat", createAuthMiddleware());
 
 // ============================================================
 // INBOX ROUTES
