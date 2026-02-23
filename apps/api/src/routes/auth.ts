@@ -542,7 +542,11 @@ authRoutes.get("/google/callback", async (c) => {
   const error = c.req.query("error");
 
   // Determine frontend origin for redirects
-  const frontendUrl = process.env.FRONTEND_URL || "https://pkrnight.com";
+  // In production the SPA is served from the same origin as the API.
+  // For local dev, set FRONTEND_URL=http://localhost:5173 so the redirect
+  // goes to the Vite dev server instead of the API port.
+  const requestOrigin = `${new URL(c.req.url).protocol}//${new URL(c.req.url).host}`;
+  const frontendUrl = process.env.FRONTEND_URL || requestOrigin;
 
   if (error || !code) {
     return c.redirect(`${frontendUrl}/login?error=google_denied`);
