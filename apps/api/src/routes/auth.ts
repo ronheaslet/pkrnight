@@ -515,7 +515,209 @@ authRoutes.post("/apple", async (c) => {
   return c.json({ message: "Apple Sign-In coming in Phase 2" }, 501);
 });
 
-// POST /auth/google (stub)
-authRoutes.post("/google", async (c) => {
-  return c.json({ message: "Google Sign-In coming in Phase 2" }, 501);
+// GET /auth/google — redirect to Google OAuth consent screen
+authRoutes.get("/google", async (c) => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI;
+
+  if (!clientId || !redirectUri) {
+    return c.json({ error: "Google OAuth not configured" }, 503);
+  }
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: "code",
+    scope: "openid email profile",
+    access_type: "offline",
+    prompt: "select_account",
+  });
+
+  return c.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+});
+
+// GET /auth/google/callback — handle Google OAuth callback
+authRoutes.get("/google/callback", async (c) => {
+  const code = c.req.query("code");
+  const error = c.req.query("error");
+
+  // Determine frontend origin for redirects
+  const frontendUrl = process.env.FRONTEND_URL || "https://pkrnight.com";
+
+  if (error || !code) {
+    return c.redirect(`${frontendUrl}/login?error=google_denied`);
+  }
+
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI;
+
+  if (!clientId || !clientSecret || !redirectUri) {
+    return c.redirect(`${frontendUrl}/login?error=google_config`);
+  }
+
+  try {
+    // Exchange authorization code for tokens
+    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+        grant_type: "authorization_code",
+      }),
+    });
+
+    if (!tokenRes.ok) {
+      console.error("Google token exchange failed:", await tokenRes.text());
+      return c.redirect(`${frontendUrl}/login?error=google_token`);
+    }
+
+    const tokenData = (await tokenRes.json()) as { id_token?: string };
+
+    if (!tokenData.id_token) {
+      return c.redirect(`${frontendUrl}/login?error=google_token`);
+    }
+
+    // Verify the ID token
+    const { OAuth2Client } = await import("google-auth-library");
+    const oauth2Client = new OAuth2Client(clientId);
+    const ticket = await oauth2Client.verifyIdToken({
+      idToken: tokenData.id_token,
+      audience: clientId,
+    });
+
+    const googlePayload = ticket.getPayload();
+    if (!googlePayload || !googlePayload.email) {
+      return c.redirect(`${frontendUrl}/login?error=google_profile`);
+    }
+
+    const { sub: googleId, email, name, picture } = googlePayload;
+
+    // Look up person by googleId first, then by email
+    let person = await prisma.person.findUnique({
+      where: { googleId: googleId },
+    });
+
+    if (!person) {
+      // Try matching by email (link Google to existing phone-auth account)
+      person = await prisma.person.findFirst({
+        where: { email: email },
+      });
+
+      if (person) {
+        // Link Google ID to existing account
+        await prisma.person.update({
+          where: { id: person.id },
+          data: {
+            googleId,
+            avatarUrl: person.avatarUrl || picture || null,
+            lastActiveAt: new Date(),
+          },
+        });
+      }
+    }
+
+    if (!person) {
+      // Create new account
+      person = await prisma.person.create({
+        data: {
+          googleId,
+          email,
+          displayName: name || "Player",
+          avatarUrl: picture || null,
+          isVerified: true,
+        },
+      });
+
+      // Generate unique referral code
+      let referralCode = generateReferralCode();
+      let attempts = 0;
+      while (attempts < 10) {
+        const existing = await prisma.referralCode.findUnique({
+          where: { code: referralCode },
+        });
+        if (!existing) break;
+        referralCode = generateReferralCode();
+        attempts++;
+      }
+
+      await prisma.referralCode.create({
+        data: { personId: person.id, code: referralCode },
+      });
+
+      // Track organic referral
+      try {
+        await prisma.referralEvent.create({
+          data: {
+            referredPersonId: person.id,
+            source: "ORGANIC",
+            accountCreatedAt: new Date(),
+          },
+        });
+      } catch (refErr) {
+        console.error("Referral tracking error:", refErr);
+      }
+    } else {
+      // Update last active
+      await prisma.person.update({
+        where: { id: person.id },
+        data: { lastActiveAt: new Date() },
+      });
+    }
+
+    // Build JWT — same logic as phone auth
+    const memberships = await prisma.membership.findMany({
+      where: { personId: person.id, status: "ACTIVE" },
+      include: {
+        specialRoles: { include: { customRole: true } },
+        club: { select: { id: true, planTier: true, brandingKey: true } },
+      },
+    });
+
+    let tokenPayload: Omit<JWTPayload, "iat" | "exp">;
+
+    if (memberships.length === 1) {
+      const m = memberships[0]!;
+      const permissions = buildPermissions(m);
+      tokenPayload = {
+        userId: person.id,
+        clubId: m.club.id,
+        planTier: m.club.planTier,
+        brandingKey: m.club.brandingKey,
+        roles: [m.systemRole],
+        permissions,
+        isSuperAdmin: person.isSuperAdmin,
+      };
+    } else {
+      tokenPayload = {
+        userId: person.id,
+        clubId: null,
+        planTier: "FREE",
+        brandingKey: null,
+        roles: [],
+        permissions: [],
+        isSuperAdmin: person.isSuperAdmin,
+      };
+    }
+
+    const token = generateToken(tokenPayload);
+    const refreshToken = generateRefreshToken(person.id);
+
+    // Redirect to frontend with tokens
+    const params = new URLSearchParams({
+      token,
+      refreshToken,
+      userId: person.id,
+      displayName: person.displayName,
+      isSuperAdmin: String(person.isSuperAdmin),
+    });
+
+    return c.redirect(`${frontendUrl}/auth/callback?${params}`);
+  } catch (err) {
+    console.error("Google OAuth error:", err);
+    return c.redirect(`${frontendUrl}/login?error=google_failed`);
+  }
 });

@@ -58,6 +58,7 @@ import JoinPage from "./pages/public/JoinPage";
 import ClubQRPage from "./pages/admin/ClubQRPage";
 import CircuitHub from "./pages/circuit/CircuitHub";
 import CircuitManage from "./pages/circuit/CircuitManage";
+import AuthCallback from "./pages/auth/AuthCallback";
 
 function App() {
   const [isOnline, setIsOnline] = useState(true);
@@ -90,6 +91,7 @@ function App() {
         {/* No bottom nav */}
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/select-club" element={<ClubSelect />} />
         <Route path="/game/:gameId/dealer" element={<ErrorBoundary><DealerPage /></ErrorBoundary>} />
         <Route path="/game/:gameId/scan" element={<ErrorBoundary><ScannerPage /></ErrorBoundary>} />

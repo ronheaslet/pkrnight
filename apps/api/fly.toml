@@ -2,7 +2,9 @@ app = "pkrnight-api"
 primary_region = "ord"
 
 [build]
-  builder = "heroku/buildpacks:20"
+  dockerfile = "../../Dockerfile"
+  build-target = ""
+
 
 [env]
   PORT = "3001"

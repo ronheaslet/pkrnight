@@ -4,6 +4,7 @@ checkEnv();
 import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { cors } from "hono/cors";
+import { serveStatic } from "hono/bun";
 import { authRoutes } from "./routes/auth";
 import { gameRoutes, chipRoutes } from "./routes/games";
 import { scannerRoutes } from "./routes/scanner";
@@ -43,6 +44,36 @@ app.get("/health", (c) => {
   });
 });
 
+// Static file serving — Vite build output
+app.use("/assets/*", serveStatic({ root: "./public" }));
+app.use("/icons/*", serveStatic({ root: "./public" }));
+app.get("/manifest.json", serveStatic({ root: "./public" }));
+app.get("/vite.svg", serveStatic({ root: "./public" }));
+
+// SPA middleware — intercept browser navigation and serve the React app
+// This runs BEFORE API routes so socialRoutes' wildcard auth doesn't catch HTML requests
+app.use("*", async (c, next) => {
+  // Only intercept GET requests from browsers (Accept: text/html, no Authorization header)
+  if (
+    c.req.method === "GET" &&
+    !c.req.header("Authorization") &&
+    (c.req.header("Accept") || "").includes("text/html") &&
+    c.req.path !== "/health"
+  ) {
+    try {
+      const file = Bun.file("./public/index.html");
+      if (await file.exists()) {
+        return new Response(file, {
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        });
+      }
+    } catch {
+      // fallthrough to API routes
+    }
+  }
+  return next();
+});
+
 // Apply rate limits
 app.use("/auth/*", rateLimitAuth());
 app.use("/public/*", rateLimitPublic());
@@ -64,6 +95,23 @@ app.route("/pub", pubPokerRoutes);
 app.route("/circuits", circuitRoutes);
 app.route("/super", superAdminRoutes);
 app.route("/public", publicRoutes);
+
+// SPA fallback — serve index.html for browser navigation that doesn't match API routes
+app.notFound(async (c) => {
+  // Serve SPA for HTML requests (browser navigation / page refresh)
+  const accept = c.req.header("Accept") || "";
+  if (c.req.method === "GET" && accept.includes("text/html")) {
+    try {
+      const file = Bun.file("./public/index.html");
+      return new Response(file, {
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      });
+    } catch {
+      // fallthrough to 404
+    }
+  }
+  return c.json({ error: "Not found" }, 404);
+});
 
 // Global error capture — must be LAST
 app.onError(errorCaptureHandler);
